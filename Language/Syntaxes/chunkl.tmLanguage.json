@@ -1,0 +1,53 @@
+{
+	"information_for_contributors": [],
+	"version": "1.0.0",
+	"name": "ChunkL",
+	"scopeName": "source.chunkl",
+	"patterns": [
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#numbers"
+		},
+		{
+			"include": "#operators"
+		}
+	],
+	"repository": {
+		"comments": {
+			"name": "comment.block.mylanguage",
+			"begin": "/\\*",
+			"end": "\\*/"
+		},
+		"keywords": {
+			"name": "keyword.control.mylanguage",
+			"match": "\\b(if|else|while|for)\\b"
+		},
+		"strings": {
+			"name": "string.quoted.double.mylanguage",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"match": "\\\\.|\\\"|\\\\$",
+					"name": "constant.character.escape.mylanguage"
+				}
+			]
+		},
+		"numbers": {
+			"name": "constant.numeric.mylanguage",
+			"match": "\\b\\d+\\b"
+		},
+		"operators": {
+			"name": "keyword.operator.mylanguage",
+			"match": "\\+|\\-|\\*|\\/"
+		}
+	}
+}
