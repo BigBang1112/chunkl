@@ -3,6 +3,9 @@
 	"version": "1.0.0",
 	"name": "ChunkL",
 	"scopeName": "source.chunkl",
+	"fileTypes": [
+		"chunkl"
+	],
 	"patterns": [
 		{
 			"include": "#comments"
