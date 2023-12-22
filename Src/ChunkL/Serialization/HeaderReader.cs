@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace ChunkL.Serialization;
 
-internal sealed class HeaderSerializer(TextReader reader)
+internal sealed class HeaderReader(TextReader reader)
 {
     public HeaderModel Read()
     {
