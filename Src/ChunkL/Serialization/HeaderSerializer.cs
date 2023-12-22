@@ -7,7 +7,8 @@ internal sealed class HeaderSerializer(TextReader reader)
 {
     public HeaderModel Read()
     {
-        var describer = reader.ReadLine();
+        var describer = reader.ReadLine() ?? throw new Exception("Deserialize failed: Expected describer");
+
         var describerMatch = Regex.Match(describer, @"^(\w+)\s+(0x)?([0-9A-F]{8})\s*(\/\/\s*(.+))?");
 
         if (!describerMatch.Success)
