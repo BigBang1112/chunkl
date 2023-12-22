@@ -26,4 +26,14 @@
 		<ProjectReference Include="..\..\Src\ChunkL\ChunkL.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="Files\" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="Files\CGameCtnChallenge.chunkl">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	</ItemGroup>
+
 </Project>

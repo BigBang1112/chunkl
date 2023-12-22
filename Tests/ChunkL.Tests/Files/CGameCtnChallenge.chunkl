@@ -1,0 +1,72 @@
+CGameCtnChallenge 0x03043000 // A map
+- chunk_Chunk03043001: Unexpected syntax (args[0] not 'UXX' or 'n')
+- chunk_Chunk03043002: Unexpected syntax (args[0] not 'UXX' or 'n')
+- chunk_Chunk03043003: Unexpected syntax (args[0] not 'UXX' or 'n')
+- chunk_Chunk03043007: Unexpected syntax
+- chunk_Chunk03043008: Unexpected syntax (authorLogin is not [valid] field)
+- chunk_Chunk03043017: Unexpected syntax (args.Count != 1 or 2)
+- chunk_Chunk03043026: Unexpected syntax (clipGlobal)
+- chunk_Chunk03043027: Unexpected if statement syntax
+- chunk_Chunk03043029: Unexpected syntax
+- chunk_Chunk0304302D: Unexpected syntax
+- chunk_Chunk03043042: Unexpected syntax (authorLogin is not [valid] field)
+- chunk_Chunk03043049: Unexpected syntax (triggerSize)
+- chunk_Chunk03043050: Unexpected syntax (triggerSize)
+- chunk_Chunk03043059: Unexpected if statement syntax
+
+0x002 (header) // map info
+ versionb
+ v2-
+  ident MapInfo
+  string MapName
+ bool
+ v1+
+  timeint BronzeTime
+  timeint SilverTime
+  timeint GoldTime
+  timeint AuthorTime
+  v3=
+   byte
+  v4+
+   int Cost
+   v5+
+    bool IsLapRace
+    v6=
+     bool IsMultilap
+    v7+
+     int<PlayMode> Mode
+     v9+
+      int
+      v10+
+       int AuthorScore
+       v11+
+        int<EditorMode> Editor
+        v12+
+         int
+         v13+
+          int NbCheckpoints
+          int NbLaps
+
+ 
+
+0x004 // version
+ version
+
+0x005 // xml
+ string? XML
+
+0x00D // vehicle
+ ident? PlayerModel
+
+0x00F // TM1.0 block data
+ ident MapInfo
+ int3? Size
+ int
+ listnode? Blocks
+ bool? NeedUnlock
+ ident? Decoration
+
+0x011 // parameters
+ CGameCtnCollectorList? BlockStock
+ CGameCtnChallengeParameters? ChallengeParameters
+ enumint32 Kind
