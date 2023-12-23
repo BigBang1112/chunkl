@@ -1,4 +1,6 @@
-﻿namespace ChunkL.Structure;
+﻿using System.Text;
+
+namespace ChunkL.Structure;
 
 public sealed class ChunkEnum : ChunkProperty
 {
@@ -6,6 +8,25 @@ public sealed class ChunkEnum : ChunkProperty
 
     public override string ToString()
     {
-        return $"{Type}<{EnumType}>{(IsNullable ? "?" : "")} {Name} // {Description}";
+        var sb = new StringBuilder(Type);
+        sb.Append('<');
+        sb.Append(EnumType);
+        sb.Append('>');
+
+        if (IsNullable)
+        {
+            sb.Append('?');
+        }
+
+        sb.Append(' ');
+        sb.Append(Name);
+
+        if (!string.IsNullOrEmpty(Description))
+        {
+            sb.Append(" // ");
+            sb.Append(Description);
+        }
+
+        return sb.ToString();
     }
 }

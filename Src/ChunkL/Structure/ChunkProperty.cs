@@ -1,4 +1,6 @@
-﻿namespace ChunkL.Structure;
+﻿using System.Text;
+
+namespace ChunkL.Structure;
 
 public class ChunkProperty : IChunkMember
 {
@@ -9,6 +11,22 @@ public class ChunkProperty : IChunkMember
 
     public override string ToString()
     {
-        return $"{Type}{(IsNullable ? "?" : "")} {Name} // {Description}";
+        var sb = new StringBuilder(Type);
+
+        if (IsNullable)
+        {
+            sb.Append('?');
+        }
+
+        sb.Append(' ');
+        sb.Append(Name);
+
+        if (!string.IsNullOrEmpty(Description))
+        {
+            sb.Append(" // ");
+            sb.Append(Description);
+        }
+
+        return sb.ToString();
     }
 }
