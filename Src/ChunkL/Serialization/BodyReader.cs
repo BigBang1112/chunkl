@@ -19,6 +19,9 @@ internal sealed partial class BodyReader(TextReader reader)
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string MemberEnumRegexPattern = @"^(int|byte)<(\w+)>$";
 
+    [StringSyntax(StringSyntaxAttribute.Regex)]
+    public const string MemberIfRegexPattern = @"^if\s+(!?\w+)(\s*(>=|<=|==|>|<)\s*(\w+))?\s*(\/\/\s*(.+))?";
+
 #if NETSTANDARD2_0
     private static readonly Regex chunkDefinitionRegex = new(ChunkDefinitionRegexPattern, RegexOptions.Compiled);
     private static Regex ChunkDefinitionRegex() => chunkDefinitionRegex;
@@ -31,6 +34,9 @@ internal sealed partial class BodyReader(TextReader reader)
 
     private static readonly Regex memberEnumRegex = new(MemberEnumRegexPattern, RegexOptions.Compiled);
     private static Regex MemberEnumRegex() => memberEnumRegex;
+
+    private static readonly Regex memberIfRegex = new(MemberIfRegexPattern, RegexOptions.Compiled);
+    private static Regex MemberIfRegex() => memberIfRegex;
 #else
     [GeneratedRegex(ChunkDefinitionRegexPattern)]
     private static partial Regex ChunkDefinitionRegex();
@@ -43,6 +49,9 @@ internal sealed partial class BodyReader(TextReader reader)
 
     [GeneratedRegex(MemberEnumRegexPattern)]
     private static partial Regex MemberEnumRegex();
+
+    [GeneratedRegex(MemberIfRegexPattern)]
+    private static partial Regex MemberIfRegex();
 #endif
 
     public BodyModel Read()
@@ -117,6 +126,32 @@ internal sealed partial class BodyReader(TextReader reader)
                 throw new Exception("Deserialize failed: Expected chunk member");
             }
 
+            var ifMatch = MemberIfRegex().Match(memberMatch.Value.TrimStart());
+
+            if (ifMatch.Success)
+            {
+                var ifMember = new ChunkIfStatement
+                {
+                    Left = ifMatch.Groups[1].Value,
+                    Operator = ifMatch.Groups[3].Value,
+                    Right = ifMatch.Groups[4].Value,
+                    Description = ifMatch.Groups[6].Value
+                };
+
+                members.Add(ifMember);
+
+                memberMatch = ReadChunkMembers(chunkDefinition, ifMember.Members, expectedIndent + 1, expectsLowerIndent: true);
+
+                if (memberMatch is null)
+                {
+                    return null;
+                }
+                else
+                {
+                    goto MemberMatched;
+                }
+            }
+
             var type = memberMatch.Groups[2].Value;
             var memberDescription = memberMatch.Groups[7].Value;
 
@@ -124,13 +159,10 @@ internal sealed partial class BodyReader(TextReader reader)
 
             if (versionMatch.Success)
             {
-                var version = int.Parse(versionMatch.Groups[1].Value);
-                var versionOperator = versionMatch.Groups[2].Value;
-
                 var chunkVersion = new ChunkVersion
                 {
-                    Number = version,
-                    Operator = versionOperator,
+                    Number = int.Parse(versionMatch.Groups[1].Value),
+                    Operator = versionMatch.Groups[2].Value,
                     Description = memberDescription
                 };
 
