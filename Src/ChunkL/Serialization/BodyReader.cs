@@ -77,9 +77,10 @@ internal sealed partial class BodyReader(TextReader reader)
             var chunkDefinition = new ChunkDefinition
             {
                 Id = uint.Parse(chunkDefinitionMatch.Groups[3].Value, NumberStyles.HexNumber),
-                Properties = chunkDefinitionMatch.Groups[5].Value,
                 Description = chunkDefinitionMatch.Groups[7].Value
             };
+
+            ReadChunkProperties(chunkDefinition.Properties, chunkDefinitionMatch.Groups[5].Value);
 
             chunkDefinitions.Add(chunkDefinition);
 
@@ -90,6 +91,31 @@ internal sealed partial class BodyReader(TextReader reader)
         {
             ChunkDefinitions = chunkDefinitions
         };
+    }
+
+    private void ReadChunkProperties(Dictionary<string, string> dictionary, string input)
+    {
+        var split = input.Split(',');
+
+        foreach (var prop in split)
+        {
+            var propSplit = prop.Split(':');
+
+            if (propSplit.Length < 1 || propSplit.Length > 2)
+            {
+                throw new Exception("Deserialize failed: Expected chunk properties");
+            }
+
+            var key = propSplit[0].Trim();
+            var value = "";
+
+            if (propSplit.Length == 2)
+            {
+                value = propSplit[1].Trim();
+            }
+
+            dictionary[key] = value;
+        }
     }
 
     private Match? ReadChunkMembers(ChunkDefinition chunkDefinition, List<IChunkMember> members, int expectedIndent, bool expectsLowerIndent)
