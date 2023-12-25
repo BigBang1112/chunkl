@@ -1,15 +1,6 @@
 CGameCtnChallenge 0x03043000 // A map
-- chunk_Chunk03043017: Unexpected syntax (args.Count != 1 or 2)
-- chunk_Chunk03043026: Unexpected syntax (clipGlobal)
-- chunk_Chunk03043027: Unexpected if statement syntax
-- chunk_Chunk03043029: Unexpected syntax
-- chunk_Chunk0304302D: Unexpected syntax
-- chunk_Chunk03043042: Unexpected syntax (authorLogin is not [valid] field)
-- chunk_Chunk03043049: Unexpected syntax (triggerSize)
-- chunk_Chunk03043050: Unexpected syntax (triggerSize)
-- chunk_Chunk03043059: Unexpected if statement syntax
 
-0x002 (header, struct: SHeaderTMDesc) // map info
+0x002 (header, struct: SHeaderTMDesc) [TM10.v3, TMSX.v10, TMNESWC.v10, TMU.v10, TMF.v11, MP3.v13, TMT.v13, MP4.v13, TM2020.v13] // map info
  versionb
  v2-
   ident MapInfo
@@ -42,7 +33,7 @@ CGameCtnChallenge 0x03043000 // A map
           int NbCheckpoints
           int NbLaps
 
-0x003 (header, struct: SHeaderCommon) // common
+0x003 (header, struct: SHeaderCommon) [TM10.v0, TMSX.v4, TMNESWC.v4, TMU.v5, TMF.v5, MP3.v11, TMT.v11, MP4.v11, TM2020.v11] // common
  versionb
  ident MapInfo
  string MapName
@@ -70,15 +61,15 @@ CGameCtnChallenge 0x03043000 // A map
          v11+
           id TitleId
 
-0x004 (header, struct: SHeaderVersion) // version
+0x004 (header, struct: SHeaderVersion) [TMSX.v5, TMNESWC.v5, TMU.v6, TMF.v6, MP3.v6, TMT.v6, MP4.v6, TM2020.v6] // version
  version
 
-0x005 (header, struct: SHeaderCommunity) // xml
+0x005 (header, struct: SHeaderCommunity) [TMSX, TMNESWC, TMU, TMF, MP3, TMT, MP4, TM2020] // xml
  string Xml
 
-0x007 (header, struct: SHeaderThumbnail) // thumbnail
+0x007 (header, struct: SHeaderThumbnail) [TMU, TMF, MP3, TMT, MP4, TM2020] // thumbnail
 
-0x008 (header, struct: SHeaderAuthorInfo) // author info
+0x008 (header, struct: SHeaderAuthorInfo) [MP3, TMT, MP4, TM2020] // author info
  version
  int AuthorVersion
  string AuthorLogin
@@ -86,41 +77,41 @@ CGameCtnChallenge 0x03043000 // A map
  string AuthorZone
  string AuthorExtraInfo
 
-0x00D // vehicle
+0x00D [TM10, TMSX, TMNESWC, TMU, TMF, MP3, TMT, MP4, TM2020] // vehicle
  ident PlayerModel
 
-0x00F // TM1.0 block data
+0x00F [TM10] // TM1.0 block data
  ident MapInfo
  int3 Size
  list_deprec<CGameCtnBlock> Blocks
  bool NeedUnlock
  ident Decoration
 
-0x011 // parameters
+0x011 [TM10, TMSX, TMNESWC, TMU, TMF, MP3, TMT, MP4, TM2020] // parameters
  CGameCtnCollectorList BlockStock
  CGameCtnChallengeParameters ChallengeParameters
  int<MapKind> Kind
 
-0x012 // TM1.0 map name
+0x012 [TM10] // TM1.0 map name
  string MapName
 
 0x013 // legacy block data
 
-0x014 (skippable) // legacy password
+0x014 (skippable) [TMSX, TMNESWC, TMU] // legacy password
  bool
  string Password
 
-0x016 (skippable)
- int
+0x016 (skippable) [TMSX, TMNESWC]
+ int // code says DoBool, likely IsPlatform (Mode == 1), but maps yield something like 1698004
 
-0x017 (skippable) // checkpoints
+0x017 (skippable) [TMSX, TMNESWC, TMF, TMU] // checkpoints
  int3[] Checkpoints
 
-0x018 (skippable) // laps
+0x018 (skippable) [TMSX, TMNESWC, TMU, TMF, MP3, TMT, MP4, TM2020] // laps
  bool TMObjective_IsLapRace
  int TMObjective_NbLaps
 
-0x019 (skippable) // mod
+0x019 (skippable) [TMSX, TMNESWC, TMU, TMF, MP3, TMT, MP4, TM2020] // mod
  fileref ModPackDesc
 
 0x01A
@@ -131,13 +122,13 @@ CGameCtnChallenge 0x03043000 // A map
  if U01 > 0
   throw NotSupportedException("SOldIgs count > 0")
 
-0x01C (skippable) // play mode
+0x01C (skippable) [TMSX, TMNESWC, TMU, TMF] // play mode
  int<PlayMode> Mode
 
 0x01D
  CMwNod? // assert: '!ReplayRecord || !ReplayRecord->m_Challenge' failed.
 
-0x01F // block data
+0x01F [TMSX, TMNESWC, TMU, TMF, MP3, TMT, MP4, TM2020] // block data
 
 0x020 // legacy legacy mediatracker
  CGameCtnMediaClip? ClipIntro
@@ -146,26 +137,26 @@ CGameCtnChallenge 0x03043000 // A map
  CGameCtnMediaClipGroup? ClipGroupInGame
  CGameCtnMediaClipGroup? ClipGroupEndRace
 
-0x021 // legacy mediatracker
+0x021 [TMSX, TMNESWC, TMU, TMF] // legacy mediatracker
  CGameCtnMediaClip? ClipIntro
  CGameCtnMediaClipGroup? ClipGroupInGame
  CGameCtnMediaClipGroup? ClipGroupEndRace
 
-0x022
+0x022 [TMSX, TMNESWC, TMU, TMF, MP3, TMT, MP4, TM2020]
  int // = 1
 
 0x023 // map origin
  vec2 MapCoordOrigin
  MapCoordTarget = MapCoordOrigin
 
-0x024 // music
+0x024 [TMSX, TMNESWC, TMU, TMF, MP3, TMT, MP4, TM2020] // music
  fileref CustomMusicPackDesc
 
-0x025 // map origin and target
+0x025 [TMSX, TMNESWC, TMU, TMF, MP3, TMT, MP4, TM2020] // map origin and target
  vec2 MapCoordOrigin
  vec2 MapCoordTarget
 
-0x026 // clip global
+0x026 [TMNESWC, TMF, TMU, MP3, TMT, MP4, TM2020] // clip global
  CMwNod?
 
 0x027 // old realtime thumbnail
@@ -181,41 +172,41 @@ CGameCtnChallenge 0x03043000 // A map
  float ThumbnailNearClipPlane
  float ThumbnailFarClipPlane
 
-0x028 (base: 0x027) // old realtime thumbnail + comments
+0x028 (base: 0x027) [TMU, TMF, MP3, TMT, MP4, TM2020] // old realtime thumbnail + comments
  base
  string? Comments
 
-0x029 (skippable) // password
+0x029 (skippable) [TMF, MP3, TMT, MP4, TM2020] // password
  data[16] HashedPassword
  uint CRC32
 
-0x02A
+0x02A [TMF, MP3, TMT, MP4, TM2020]
  bool // code hints to something with locking (NeedUnlock?)
 
 0x02D (skippable) // realtime thumbnail + comments
 
-0x034 (skippable)
+0x034 (skippable) [MP3, TMT, MP4, TM2020]
  data
 
-0x036 (skippable, base: 0x02D) // realtime thumbnail + comments
+0x036 (skippable, base: 0x02D) [MP3, TMT, MP4, TM2020] // realtime thumbnail + comments
 
-0x038 (skippable, ignore)
+0x038 (skippable, ignore) [MP3, TMT, MP4, TM2020]
 
 0x03A (skippable, ignore)
 
-0x03D (skippable) // lightmaps
+0x03D (skippable) [MP3, TMT, MP4] // lightmaps
 
-0x03E (skippable) // CarMarksBuffer
+0x03E (skippable) [MP3, TMT, MP4, TM2020] // CarMarksBuffer
  version
  v1+
   throw
  CSceneVehicleCarMarksSamples[]_deprec CarMarksBuffer
 
-0x040 (skippable) // items
+0x040 (skippable) [MP3.v2, TMT.v4, MP4.v4, TM2020.v7] // items
 
 0x041 (skippable, ignore)
 
-0x042 (skippable) // author
+0x042 (skippable) [MP3, TMT, MP4, TM2020] // author
  version // = 1
  int AuthorVersion
  string AuthorLogin
@@ -223,20 +214,20 @@ CGameCtnChallenge 0x03043000 // A map
  string AuthorZone
  string AuthorExtraInfo
 
-0x043 (skippable) // genealogies
+0x043 (skippable) [MP3, TMT, MP4, TM2020] // genealogies
 
-0x044 (skippable) // metadata
+0x044 (skippable) [MP3, TMT, MP4, TM2020] // metadata
 
-0x047 (skippable)
+0x047 (skippable) [MP3, TMT]
  version
  string?
  v1+
   throw
 
-0x048 (skippable) // baked blocks
+0x048 (skippable) [MP3, TMT, MP4, TM2020] // baked blocks
 
-0x049 (skippable) // mediatracker
- version
+0x049 (skippable) [MP3, TMT, MP4, TM2020] // mediatracker
+ version // = 2
  CGameCtnMediaClip? ClipIntro
  CGameCtnMediaClip? ClipPodium
  CGameCtnMediaClipGroup? ClipGroupInGame
@@ -246,85 +237,85 @@ CGameCtnChallenge 0x03043000 // A map
  v1+
   int3 TriggerSize
 
-0x04B (skippable) // objectives
+0x04B (skippable) [MP3, TMT, MP4, TM2020] // objectives
  string? ObjectiveTextAuthor
  string? ObjectiveTextGold
  string? ObjectiveTextSilver
  string? ObjectiveTextBronze
 
-0x04D (skippable, ignore)
+0x04D (skippable, ignore) [MP3, TMT]
 
 0x04E (skippable, ignore)
 
-0x04F (skippable, ignore)
+0x04F (skippable, ignore) [MP3, TMT, MP4, TM2020]
 
-0x050 (skippable) // offzones
+0x050 (skippable) [MP3, TMT, MP4, TM2020] // offzones
 
-0x051 (skippable) // title info
+0x051 (skippable) [MP3, TMT, MP4, TM2020] // title info
  version
  id TitleId
  string BuildVersion
 
-0x052 (skippable) // deco height
+0x052 (skippable) [MP3, TMT, MP4, TM2020] // deco height
  version
  int DecoBaseHeightOffset
 
-0x053 (skippable) // bot paths
- version
+0x053 (skippable) [MP3, TMT, MP4, TM2020] // bot paths
+ version // = 3
  list<BotPath> BotPaths
 
-0x054 (skippable) // embedded objects
+0x054 (skippable) [MP3, TMT, MP4, TM2020] // embedded objects
 
-0x055 (skippable, ignore)
+0x055 (skippable, ignore) [MP3, TMT, MP4, TM2020]
 
-0x056 (skippable) // light settings
- version
+0x056 (skippable) [MP4, TM2020] // light settings
+ version // = 3
  int
  timeofday DayTime
  int
  bool DynamicDaylight
  timeint? DayDuration
 
-0x057 (skippable, ignore)
+0x057 (skippable, ignore) [MP4, TM2020]
 
-0x058 (skippable) // SubMapsInfos
+0x058 (skippable) [MP4] // SubMapsInfos
  version
  int U01
  if U01 > 0
   throw
 
-0x059 (skippable)
+0x059 (skippable) [MP4, TM2020]
 
-0x05A (skippable)
+0x05A (skippable) [TM2020]
  int
  int
 
-0x05B (skippable) // lightmaps
+0x05B (skippable) [TM2020] // lightmaps
 
-0x05C (skippable, ignore)
+0x05C (skippable, ignore) [TM2020]
 
-0x05D (skippable, ignore)
+0x05D (skippable, ignore) [TM2020]
 
-0x05E (skippable, ignore)
+0x05E (skippable, ignore) [TM2020]
 
-0x05F (skippable) // free blocks
+0x05F (skippable) [TM2020] // free blocks
 
-0x060 (skippable, ignore)
+0x060 (skippable, ignore) [TM2020]
 
-0x061 (skippable, ignore)
+0x061 (skippable, ignore) [TM2020]
 
-0x062 (skippable) // MapElemColor
+0x062 (skippable) [TM2020] // MapElemColor
 
-0x063 (skippable) // AnimPhaseOffset
+0x063 (skippable) [TM2020] // AnimPhaseOffset
 
-0x064 (skippable, ignore)
+0x064 (skippable, ignore) [TM2020]
 
-0x065 (skippable) // foreground pack desc
+0x065 (skippable) [TM2020] // foreground pack desc
 
-0x067 (skippable, ignore)
+0x067 (skippable, ignore) [TM2020]
 
-0x068 (skippable) // MapElemLmQuality
+0x068 (skippable) [TM2020] // MapElemLmQuality
 
-0x069 (skippable) // macroblock instances
+0x069 (skippable) [TM2020] // macroblock instances
 
-0x06B (skippable) // light settings 2
+0x06B (skippable) [TM2020] // light settings 2
