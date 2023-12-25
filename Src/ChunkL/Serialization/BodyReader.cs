@@ -8,7 +8,7 @@ namespace ChunkL.Serialization;
 internal sealed partial class BodyReader(TextReader reader)
 {
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string ChunkDefinitionRegexPattern = @"^((0x)?([0-9a-fA-F]{3}))(\s+\((.+?)\))?\s*(\/\/\s*(.+))?";
+    public const string ChunkDefinitionRegexPattern = @"^((0x)?([0-9a-fA-F]{3}))(\s+\((.+?)\))?(\s+\[(.+?)\])?\s*(\/\/\s*(.+))?";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string ChunkMemberRegexPattern = @"^(\s+)(.+?)(\?)?(\s+(\w+))?\s*(\/\/\s*(.+))?$";
@@ -77,10 +77,21 @@ internal sealed partial class BodyReader(TextReader reader)
             var chunkDefinition = new ChunkDefinition
             {
                 Id = uint.Parse(chunkDefinitionMatch.Groups[3].Value, NumberStyles.HexNumber),
-                Description = chunkDefinitionMatch.Groups[7].Value
+                Description = chunkDefinitionMatch.Groups[9].Value
             };
 
-            ReadChunkProperties(chunkDefinition.Properties, chunkDefinitionMatch.Groups[5].Value);
+            var properties = chunkDefinitionMatch.Groups[5].Value;
+            var versions = chunkDefinitionMatch.Groups[7].Value;
+
+            if (!string.IsNullOrEmpty(properties))
+            {
+                ReadChunkProperties(chunkDefinition.Properties, properties);
+            }
+
+            if (!string.IsNullOrEmpty(versions))
+            {
+                ReadChunkVersions(chunkDefinition.Versions, versions);
+            }
 
             chunkDefinitions.Add(chunkDefinition);
 
@@ -112,6 +123,31 @@ internal sealed partial class BodyReader(TextReader reader)
             if (propSplit.Length == 2)
             {
                 value = propSplit[1].Trim();
+            }
+
+            dictionary[key] = value;
+        }
+    }
+
+    private void ReadChunkVersions(Dictionary<string, int?> dictionary, string input)
+    {
+        var split = input.Split(',');
+
+        foreach (var prop in split)
+        {
+            var propSplit = prop.Split(new[] { ".v" }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (propSplit.Length < 1 || propSplit.Length > 2)
+            {
+                throw new Exception("Deserialize failed: Expected chunk versions");
+            }
+
+            var key = propSplit[0].Trim();
+            var value = default(int?);
+
+            if (propSplit.Length == 2)
+            {
+                value = int.Parse(propSplit[1].Trim());
             }
 
             dictionary[key] = value;

@@ -7,6 +7,7 @@ public sealed class ChunkDefinition : IChunkMemberBlock
     public required uint Id { get; init; }
     public required string Description { get; init; }
     public Dictionary<string, string> Properties { get; init; } = [];
+    public Dictionary<string, int?> Versions { get; init; } = [];
     public List<IChunkMember> Members { get; init; } = [];
     public bool IsVersionable => Members.Count > 0 && Members[0] is ChunkVersion;
 
@@ -40,6 +41,33 @@ public sealed class ChunkDefinition : IChunkMemberBlock
             }
 
             sb.Append(')');
+        }
+
+        if (Versions.Count > 0)
+        {
+            sb.Append(" [");
+
+            var first = true;
+
+            foreach (var pair in Versions)
+            {
+                if (!first)
+                {
+                    sb.Append(", ");
+                }
+
+                sb.Append(pair.Key);
+
+                if (pair.Value.HasValue)
+                {
+                    sb.Append(".v");
+                    sb.Append(pair.Value.Value);
+                }
+
+                first = false;
+            }
+
+            sb.Append(']');
         }
 
         if (!string.IsNullOrEmpty(Description))
