@@ -1,10 +1,33 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
+		<Version>0.1.0</Version>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<Authors>Petr Pivoňka (BigBang1112)</Authors>
+		<Description>A library handling ChunkL - a standard for serialized objects represented in binary data chunks that are backwards compatible.</Description>
+		<Copyright>Copyright © Petr 'BigBang1112' Pivoňka</Copyright>
+	</PropertyGroup>
+
+	<PropertyGroup>
 		<TargetFrameworks>net8.0;netstandard2.0</TargetFrameworks>
 		<LangVersion>12</LangVersion>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+		<IsTrimmable>true</IsTrimmable>
+		<IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))">true</IsAotCompatible>
+
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageTags>gbx, trackmania, maniaplanet, gamebox, net, chunk</PackageTags>
+
+		<RepositoryType>git</RepositoryType>
+		<RepositoryUrl>https://github.com/BigBang1112/chunkl</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/BigBang1112/chunkl</PackageProjectUrl>
+	</PropertyGroup>
+	
+	<PropertyGroup>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 	</PropertyGroup>
 
 </Project>
