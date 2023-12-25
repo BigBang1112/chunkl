@@ -1,0 +1,43 @@
+name: Publish
+
+on:
+  release:
+    types: [ published ]
+
+jobs:
+  build:
+    name: Build and Publish
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: |
+          6.0.x
+          8.0.x
+          
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build -c Release --no-restore
+      
+    - name: Test
+      run: dotnet test -c Release --no-build --verbosity normal
+      
+    - name: Publish the package to nuget.org
+      run: dotnet nuget push ChunkL/bin/Release/*.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
+    
+    - name: Publish the package to github.com
+      run: dotnet nuget push ChunkL/bin/Release/*.nupkg -k ${{ secrets.GITHUB_TOKEN }} -s https://nuget.pkg.github.com/bigbang1112/index.json
+
+    - name: Upload package to this release
+      run: gh release upload ${{ github.ref_name }} ChunkL/bin/Release/*.nupkg
+        file: TmEssentials.*.nupkg
+        file_glob: true
+        tag: ${{ github.ref }}
+        overwrite: true
