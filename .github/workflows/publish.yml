@@ -30,10 +30,10 @@ jobs:
       run: dotnet test -c Release --no-build --verbosity normal
       
     - name: Publish the package to nuget.org
-      run: dotnet nuget push ChunkL/bin/Release/*.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
+      run: dotnet nuget push Src/ChunkL/bin/Release/*.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
     
     - name: Publish the package to github.com
-      run: dotnet nuget push ChunkL/bin/Release/*.nupkg -k ${{ secrets.GITHUB_TOKEN }} -s https://nuget.pkg.github.com/bigbang1112/index.json
+      run: dotnet nuget push Src/ChunkL/bin/Release/*.nupkg -k ${{ secrets.GITHUB_TOKEN }} -s https://nuget.pkg.github.com/bigbang1112/index.json
 
     - name: Upload package to this release
-      run: gh release upload ${{ github.ref_name }} ChunkL/bin/Release/*.nupkg
+      run: gh release upload ${{ github.ref_name }} Src/ChunkL/bin/Release/*.nupkg
