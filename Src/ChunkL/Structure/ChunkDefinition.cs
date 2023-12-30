@@ -18,7 +18,7 @@ public sealed class ChunkDefinition : IChunkMemberBlock
         {
             if (isVersionable.HasValue) return isVersionable.Value;
             if (Members.Count == 0) return false;
-            isVersionable = Members.OfType<ChunkProperty>().Any(p => p.Name is "version" or "versionb");
+            isVersionable = Members.OfType<ChunkProperty>().Any(p => p.Type is "version" or "versionb");
             return isVersionable.Value;
         }
     }
