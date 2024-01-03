@@ -59,7 +59,7 @@ internal sealed partial class BodyReader(TextReader reader)
     [GeneratedRegex(MemberIfRegexPattern)]
     private static partial Regex MemberIfRegex();
 
-    [GeneratedRegex(ChunkDefinitionRegexPattern)]
+    [GeneratedRegex(ArchiveDefinitionRegexPattern)]
     private static partial Regex ArchiveDefinitionRegex();
 #endif
 
