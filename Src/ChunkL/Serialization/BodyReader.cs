@@ -22,6 +22,9 @@ internal sealed partial class BodyReader(TextReader reader)
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string MemberIfRegexPattern = @"^if\s+(!?\w+)(\s*(>=|<=|==|>|<)\s*(\w+))?\s*(\/\/\s*(.+))?";
 
+    [StringSyntax(StringSyntaxAttribute.Regex)]
+    public const string ArchiveDefinitionRegexPattern = @"^archive\s+(\w+)\s*(\/\/\s*(.+))?";
+
 #if NETSTANDARD2_0
     private static readonly Regex chunkDefinitionRegex = new(ChunkDefinitionRegexPattern, RegexOptions.Compiled);
     private static Regex ChunkDefinitionRegex() => chunkDefinitionRegex;
@@ -37,6 +40,9 @@ internal sealed partial class BodyReader(TextReader reader)
 
     private static readonly Regex memberIfRegex = new(MemberIfRegexPattern, RegexOptions.Compiled);
     private static Regex MemberIfRegex() => memberIfRegex;
+
+    private static readonly Regex archiveDefinitionRegex = new(ArchiveDefinitionRegexPattern, RegexOptions.Compiled);
+    private static Regex ArchiveDefinitionRegex() => archiveDefinitionRegex;
 #else
     [GeneratedRegex(ChunkDefinitionRegexPattern)]
     private static partial Regex ChunkDefinitionRegex();
@@ -52,11 +58,15 @@ internal sealed partial class BodyReader(TextReader reader)
 
     [GeneratedRegex(MemberIfRegexPattern)]
     private static partial Regex MemberIfRegex();
+
+    [GeneratedRegex(ChunkDefinitionRegexPattern)]
+    private static partial Regex ArchiveDefinitionRegex();
 #endif
 
     public BodyModel Read()
     {
         var chunkDefinitions = new List<ChunkDefinition>();
+        var archiveDefinitions = new List<ArchiveDefinition>();
 
         // read chunk definitions until end
         string? chunkDef;
@@ -71,7 +81,24 @@ internal sealed partial class BodyReader(TextReader reader)
 
             if (!chunkDefinitionMatch.Success)
             {
-                throw new Exception("Deserialize failed: Expected chunk definition");
+                var archiveDefinitionMatch = ArchiveDefinitionRegex().Match(chunkDef);
+
+                if (!archiveDefinitionMatch.Success)
+                {
+                    throw new Exception("Deserialize failed: Expected chunk or archive definition");
+                }
+
+                var archiveDefinition = new ArchiveDefinition
+                {
+                    Name = archiveDefinitionMatch.Groups[1].Value,
+                    Description = chunkDefinitionMatch.Groups[3].Value
+                };
+
+                archiveDefinitions.Add(archiveDefinition);
+
+                _ = ReadMembers(archiveDefinition.Members, expectedIndent: 1, expectsLowerIndent: false);
+
+                continue;
             }
 
             var chunkDefinition = new ChunkDefinition
@@ -95,12 +122,13 @@ internal sealed partial class BodyReader(TextReader reader)
 
             chunkDefinitions.Add(chunkDefinition);
 
-            _ = ReadChunkMembers(chunkDefinition, chunkDefinition.Members, expectedIndent: 1, expectsLowerIndent: false);
+            _ = ReadMembers(chunkDefinition.Members, expectedIndent: 1, expectsLowerIndent: false);
         }
 
         return new BodyModel
         {
-            ChunkDefinitions = chunkDefinitions
+            ChunkDefinitions = chunkDefinitions,
+            ArchiveDefinitions = archiveDefinitions
         };
     }
 
@@ -154,7 +182,7 @@ internal sealed partial class BodyReader(TextReader reader)
         }
     }
 
-    private Match? ReadChunkMembers(ChunkDefinition chunkDefinition, List<IChunkMember> members, int expectedIndent, bool expectsLowerIndent)
+    private Match? ReadMembers(List<IChunkMember> members, int expectedIndent, bool expectsLowerIndent)
     {
         // read features until empty/whitespace line
         string? member;
@@ -202,7 +230,7 @@ internal sealed partial class BodyReader(TextReader reader)
 
                 members.Add(ifMember);
 
-                memberMatch = ReadChunkMembers(chunkDefinition, ifMember.Members, expectedIndent + 1, expectsLowerIndent: true);
+                memberMatch = ReadMembers(ifMember.Members, expectedIndent + 1, expectsLowerIndent: true);
 
                 if (memberMatch is null)
                 {
@@ -230,7 +258,7 @@ internal sealed partial class BodyReader(TextReader reader)
 
                 members.Add(chunkVersion);
 
-                memberMatch = ReadChunkMembers(chunkDefinition, chunkVersion.Members, expectedIndent + 1, expectsLowerIndent: true);
+                memberMatch = ReadMembers(chunkVersion.Members, expectedIndent + 1, expectsLowerIndent: true);
 
                 if (memberMatch is null)
                 {
