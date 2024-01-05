@@ -163,7 +163,7 @@ internal sealed partial class BodyReader(TextReader reader)
 
         foreach (var prop in split)
         {
-            var propSplit = prop.Split(new[] { ".v" }, StringSplitOptions.RemoveEmptyEntries);
+            var propSplit = prop.Split([".v"], StringSplitOptions.RemoveEmptyEntries);
 
             if (propSplit.Length < 1 || propSplit.Length > 2)
             {
