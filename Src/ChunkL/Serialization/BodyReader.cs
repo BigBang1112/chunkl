@@ -13,7 +13,7 @@ internal sealed partial class BodyReader(TextReader reader)
     public const string ChunkDefinitionRegexPattern = @"^((0x)?([0-9a-fA-F]{3}))(\s+\((.+?)\))?(\s+\[(.+?)\])?\s*(\/\/\s*(.+))?";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string ChunkMemberRegexPattern = @"^(\s+)(.+?)(\?)?(\s+(\w+))?\s*(\/\/\s*(.+))?$";
+    public const string ChunkMemberRegexPattern = @"^(\s+)(.+?)(\?)?(\s+(\w+))?(\s*=\s*(\w+))?\s*(\/\/\s*(.+))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string MemberVersionRegexPattern = @"^v([0-9]+)([+-=])$";
@@ -256,7 +256,7 @@ internal sealed partial class BodyReader(TextReader reader)
             }
 
             var type = memberMatch.Groups[2].Value;
-            var memberDescription = memberMatch.Groups[7].Value;
+            var memberDescription = memberMatch.Groups[9].Value;
 
             var versionMatch = MemberVersionRegex().Match(type);
 
@@ -285,6 +285,7 @@ internal sealed partial class BodyReader(TextReader reader)
 
             var nullable = memberMatch.Groups[3].Success;
             var name = memberMatch.Groups[5].Value;
+            var defaultValue = memberMatch.Groups[7].Value;
 
             var enumMatch = MemberEnumRegex().Match(type);
 
@@ -299,7 +300,8 @@ internal sealed partial class BodyReader(TextReader reader)
                     IsNullable = nullable,
                     Name = name,
                     Description = memberDescription,
-                    EnumType = enumType
+                    EnumType = enumType,
+                    DefaultValue = defaultValue
                 });
 
                 continue;
@@ -324,7 +326,8 @@ internal sealed partial class BodyReader(TextReader reader)
                 Type = type,
                 IsNullable = nullable,
                 Name = name,
-                Description = memberDescription
+                Description = memberDescription,
+                DefaultValue = defaultValue
             });
         }
 

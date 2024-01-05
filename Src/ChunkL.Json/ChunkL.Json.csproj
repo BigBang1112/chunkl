@@ -30,4 +30,8 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 	</PropertyGroup>
 
+	<ItemGroup>
+		<ProjectReference Include="..\ChunkL\ChunkL.csproj" />
+	</ItemGroup>
+
 </Project>
