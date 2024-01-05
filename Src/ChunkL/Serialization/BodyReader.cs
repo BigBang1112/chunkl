@@ -7,6 +7,8 @@ namespace ChunkL.Serialization;
 
 internal sealed partial class BodyReader(TextReader reader)
 {
+    private readonly TextReader reader = reader ?? throw new ArgumentNullException(nameof(reader));
+
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string ChunkDefinitionRegexPattern = @"^((0x)?([0-9a-fA-F]{3}))(\s+\((.+?)\))?(\s+\[(.+?)\])?\s*(\/\/\s*(.+))?";
 
@@ -21,6 +23,9 @@ internal sealed partial class BodyReader(TextReader reader)
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string MemberIfRegexPattern = @"^if\s+(!?\w+)(\s*(>=|<=|==|>|<)\s*(\w+))?\s*(\/\/\s*(.+))?";
+
+    [StringSyntax(StringSyntaxAttribute.Regex)]
+    public const string MemberAssignRegexPattern = @"^(\w+)\s*=\s*(\w+)\s*(\/\/\s*(.+))?";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string ArchiveDefinitionRegexPattern = @"^archive\s+(\w+)\s*(\/\/\s*(.+))?";
@@ -41,6 +46,9 @@ internal sealed partial class BodyReader(TextReader reader)
     private static readonly Regex memberIfRegex = new(MemberIfRegexPattern, RegexOptions.Compiled);
     private static Regex MemberIfRegex() => memberIfRegex;
 
+    private static readonly Regex memberAssignRegex = new(MemberAssignRegexPattern, RegexOptions.Compiled);
+    private static Regex MemberAssignRegex() => memberAssignRegex;
+
     private static readonly Regex archiveDefinitionRegex = new(ArchiveDefinitionRegexPattern, RegexOptions.Compiled);
     private static Regex ArchiveDefinitionRegex() => archiveDefinitionRegex;
 #else
@@ -58,6 +66,9 @@ internal sealed partial class BodyReader(TextReader reader)
 
     [GeneratedRegex(MemberIfRegexPattern)]
     private static partial Regex MemberIfRegex();
+
+    [GeneratedRegex(MemberAssignRegexPattern)]
+    private static partial Regex MemberAssignRegex();
 
     [GeneratedRegex(ArchiveDefinitionRegexPattern)]
     private static partial Regex ArchiveDefinitionRegex();
@@ -216,7 +227,9 @@ internal sealed partial class BodyReader(TextReader reader)
                 throw new Exception("Deserialize failed: Expected chunk member");
             }
 
-            var ifMatch = MemberIfRegex().Match(memberMatch.Value.TrimStart());
+            var justMember = memberMatch.Value.TrimStart();
+
+            var ifMatch = MemberIfRegex().Match(justMember);
 
             if (ifMatch.Success)
             {
@@ -287,6 +300,20 @@ internal sealed partial class BodyReader(TextReader reader)
                     Name = name,
                     Description = memberDescription,
                     EnumType = enumType
+                });
+
+                continue;
+            }
+
+            var assignMatch = MemberAssignRegex().Match(justMember);
+
+            if (assignMatch.Success)
+            {
+                members.Add(new ChunkMemberAssign
+                {
+                    Left = assignMatch.Groups[1].Value,
+                    Right = assignMatch.Groups[2].Value,
+                    Description = assignMatch.Groups[4].Value
                 });
 
                 continue;
