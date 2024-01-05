@@ -2,6 +2,6 @@
 
 public sealed class DynamicClass
 {
-    public string Name { get; init; }
-    public uint Id { get; init; }
+    public required string Name { get; init; }
+    public required uint Id { get; init; }
 }
