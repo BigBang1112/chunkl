@@ -284,7 +284,7 @@ internal sealed partial class BodyReader(TextReader reader)
             }
 
             var nullable = memberMatch.Groups[3].Success;
-            var name = memberMatch.Groups[5].Value;
+            var name = memberMatch.Groups[5].Value.Trim('"');
             var defaultValue = memberMatch.Groups[7].Value;
 
             var enumMatch = MemberEnumRegex().Match(type);
