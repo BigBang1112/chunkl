@@ -78,6 +78,7 @@ internal sealed partial class BodyReader(TextReader reader)
     {
         var chunkDefinitions = new List<ChunkDefinition>();
         var archiveDefinitions = new List<ArchiveDefinition>();
+        var existingNames = new HashSet<string>();
 
         // read chunk definitions until end
         string? chunkDef;
@@ -107,7 +108,7 @@ internal sealed partial class BodyReader(TextReader reader)
 
                 archiveDefinitions.Add(archiveDefinition);
 
-                _ = ReadMembers(archiveDefinition.Members, expectedIndent: 1, expectsLowerIndent: false);
+                _ = ReadMembers(archiveDefinition.Members, expectedIndent: 1, expectsLowerIndent: false, existingNames);
 
                 continue;
             }
@@ -133,7 +134,7 @@ internal sealed partial class BodyReader(TextReader reader)
 
             chunkDefinitions.Add(chunkDefinition);
 
-            _ = ReadMembers(chunkDefinition.Members, expectedIndent: 1, expectsLowerIndent: false);
+            _ = ReadMembers(chunkDefinition.Members, expectedIndent: 1, expectsLowerIndent: false, existingNames);
         }
 
         return new BodyModel
@@ -193,7 +194,7 @@ internal sealed partial class BodyReader(TextReader reader)
         }
     }
 
-    private Match? ReadMembers(List<IChunkMember> members, int expectedIndent, bool expectsLowerIndent)
+    private Match? ReadMembers(List<IChunkMember> members, int expectedIndent, bool expectsLowerIndent, HashSet<string> existingNames)
     {
         // read features until empty/whitespace line
         string? member;
@@ -243,7 +244,7 @@ internal sealed partial class BodyReader(TextReader reader)
 
                 members.Add(ifMember);
 
-                memberMatch = ReadMembers(ifMember.Members, expectedIndent + 1, expectsLowerIndent: true);
+                memberMatch = ReadMembers(ifMember.Members, expectedIndent + 1, expectsLowerIndent: true, existingNames);
 
                 if (memberMatch is null)
                 {
@@ -271,7 +272,7 @@ internal sealed partial class BodyReader(TextReader reader)
 
                 members.Add(chunkVersion);
 
-                memberMatch = ReadMembers(chunkVersion.Members, expectedIndent + 1, expectsLowerIndent: true);
+                memberMatch = ReadMembers(chunkVersion.Members, expectedIndent + 1, expectsLowerIndent: true, existingNames);
 
                 if (memberMatch is null)
                 {
@@ -285,6 +286,7 @@ internal sealed partial class BodyReader(TextReader reader)
 
             var nullable = memberMatch.Groups[3].Success;
             var name = memberMatch.Groups[5].Value.Trim('"');
+            if (!string.IsNullOrWhiteSpace(name)) existingNames.Add(name);
             var defaultValue = memberMatch.Groups[7].Value;
 
             var enumMatch = MemberEnumRegex().Match(type);
@@ -311,14 +313,19 @@ internal sealed partial class BodyReader(TextReader reader)
 
             if (assignMatch.Success)
             {
-                members.Add(new ChunkMemberAssign
-                {
-                    Left = assignMatch.Groups[1].Value,
-                    Right = assignMatch.Groups[2].Value,
-                    Description = assignMatch.Groups[4].Value
-                });
+                var left = assignMatch.Groups[1].Value;
 
-                continue;
+                if (existingNames.Contains(left))
+                {
+                    members.Add(new ChunkMemberAssign
+                    {
+                        Left = left,
+                        Right = assignMatch.Groups[2].Value,
+                        Description = assignMatch.Groups[4].Value
+                    });
+
+                    continue;
+                }
             }
 
             members.Add(new ChunkProperty
