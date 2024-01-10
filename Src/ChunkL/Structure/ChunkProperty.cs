@@ -10,6 +10,8 @@ public class ChunkProperty : IChunkMember
     public required string Description { get; init; }
     public required string DefaultValue { get; init; }
 
+    public bool IsLocal => Name.Length > 0 && char.IsLower(Name[0]);
+
     public override string ToString()
     {
         var sb = new StringBuilder(Type);
