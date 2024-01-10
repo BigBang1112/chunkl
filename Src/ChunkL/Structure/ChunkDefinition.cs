@@ -4,7 +4,8 @@ namespace ChunkL.Structure;
 
 public sealed class ChunkDefinition : IChunkMemberBlock
 {
-    private bool? isVersionable;
+    private bool versionMemberChecked;
+    private ChunkProperty? versionMember;
 
     public required uint Id { get; init; }
     public required string Description { get; init; }
@@ -12,16 +13,18 @@ public sealed class ChunkDefinition : IChunkMemberBlock
     public Dictionary<string, int?> Versions { get; init; } = [];
     public List<IChunkMember> Members { get; init; } = [];
 
-    public bool IsVersionable
+    public ChunkProperty? VersionMember
     {
         get
         {
-            if (isVersionable.HasValue) return isVersionable.Value;
-            if (Members.Count == 0) return false;
-            isVersionable = Members.OfType<ChunkProperty>().Any(p => p.Type is "version" or "versionb");
-            return isVersionable.Value;
+            if (versionMemberChecked) return versionMember;
+            versionMember = Members.OfType<ChunkProperty>().FirstOrDefault(p => p.Type is "version" or "versionb");
+            versionMemberChecked = true;
+            return versionMember;
         }
     }
+
+    public bool IsVersionable => VersionMember is not null;
 
     public override string ToString()
     {
