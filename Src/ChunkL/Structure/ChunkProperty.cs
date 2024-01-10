@@ -21,8 +21,11 @@ public class ChunkProperty : IChunkMember
             sb.Append('?');
         }
 
-        sb.Append(' ');
-        sb.Append(Name);
+        if (!string.IsNullOrEmpty(Name))
+        {
+            sb.Append(' ');
+            sb.Append(Name);
+        }
 
         if (!string.IsNullOrEmpty(DefaultValue))
         {
