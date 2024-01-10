@@ -7,6 +7,8 @@ namespace ChunkL.Serialization;
 
 internal sealed partial class HeaderReader(TextReader reader)
 {
+    private readonly TextReader reader = reader ?? throw new ArgumentNullException(nameof(reader));
+
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string DescriberRegexPattern = @"^(\w+)\s+(0x)?([0-9a-fA-F]{8})\s*(\/\/\s*(.+))?";
 

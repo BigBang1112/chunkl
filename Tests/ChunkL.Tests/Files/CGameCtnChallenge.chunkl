@@ -1,4 +1,4 @@
-CGameCtnChallenge 0x03043000 // A map
+CGameCtnChallenge 0x03043000 // A map.
 
 0x002 (header, struct: SHeaderTMDesc) [TM10.v3, TMSX.v10, TMNESWC.v10, TMU.v10, TMF.v11, MP3.v13, TMT.v13, MP4.v13, TM2020.v13] // map info
  versionb
@@ -68,6 +68,16 @@ CGameCtnChallenge 0x03043000 // A map
  string Xml
 
 0x007 (header, struct: SHeaderThumbnail) [TMU, TMF, MP3, TMT, MP4, TM2020] // thumbnail
+ version = 1
+ v0=
+  return
+ int thumbnailSize
+ marker "<Thumbnail.jpg>"
+ data[thumbnailSize] Thumbnail
+ marker "</Thumbnail.jpg>"
+ marker "<Comments>"
+ string Comments
+ marker "</Comments>"
 
 0x008 (header, struct: SHeaderAuthorInfo) [MP3, TMT, MP4, TM2020] // author info
  version
@@ -83,7 +93,7 @@ CGameCtnChallenge 0x03043000 // A map
 0x00F [TM10] // TM1.0 block data
  ident MapInfo
  int3 Size
- list_deprec<CGameCtnBlock> Blocks
+ list<CGameCtnBlock>_deprec Blocks
  bool NeedUnlock
  ident Decoration
 
@@ -112,13 +122,13 @@ CGameCtnChallenge 0x03043000 // A map
  int TMObjective_NbLaps
 
 0x019 (skippable) [TMSX, TMNESWC, TMU, TMF, MP3, TMT, MP4, TM2020] // mod
- fileref ModPackDesc
+ packdesc ModPackDesc
 
 0x01A
  CMwNod? // assert: '!ReplayRecord || !ReplayRecord->m_Challenge' failed.
 
 0x01B // OldIgs
- int U01
+ int
  if U01 > 0
   throw NotSupportedException("SOldIgs count > 0")
 
@@ -143,14 +153,14 @@ CGameCtnChallenge 0x03043000 // A map
  CGameCtnMediaClipGroup? ClipGroupEndRace
 
 0x022 [TMSX, TMNESWC, TMU, TMF, MP3, TMT, MP4, TM2020]
- int // = 1
+ int = 1
 
 0x023 // map origin
  vec2 MapCoordOrigin
  MapCoordTarget = MapCoordOrigin
 
 0x024 [TMSX, TMNESWC, TMU, TMF, MP3, TMT, MP4, TM2020] // music
- fileref CustomMusicPackDesc
+ packdesc CustomMusicPackDesc
 
 0x025 [TMSX, TMNESWC, TMU, TMF, MP3, TMT, MP4, TM2020] // map origin and target
  vec2 MapCoordOrigin
@@ -178,7 +188,7 @@ CGameCtnChallenge 0x03043000 // A map
 
 0x029 (skippable) [TMF, MP3, TMT, MP4, TM2020] // password
  data[16] HashedPassword
- uint CRC32
+ uint Crc32
 
 0x02A [TMF, MP3, TMT, MP4, TM2020]
  bool // code hints to something with locking (NeedUnlock?)
@@ -207,7 +217,7 @@ CGameCtnChallenge 0x03043000 // A map
 0x041 (skippable, ignore)
 
 0x042 (skippable) [MP3, TMT, MP4, TM2020] // author
- version // = 1
+ version = 1
  int AuthorVersion
  string AuthorLogin
  string AuthorNickname
@@ -227,7 +237,7 @@ CGameCtnChallenge 0x03043000 // A map
 0x048 (skippable) [MP3, TMT, MP4, TM2020] // baked blocks
 
 0x049 (skippable) [MP3, TMT, MP4, TM2020] // mediatracker
- version // = 2
+ version = 2
  CGameCtnMediaClip? ClipIntro
  CGameCtnMediaClip? ClipPodium
  CGameCtnMediaClipGroup? ClipGroupInGame
@@ -261,17 +271,15 @@ CGameCtnChallenge 0x03043000 // A map
  int DecoBaseHeightOffset
 
 0x053 (skippable) [MP3, TMT, MP4, TM2020] // bot paths
- version // = 3
- list<BotPath> BotPaths
 
 0x054 (skippable) [MP3, TMT, MP4, TM2020] // embedded objects
 
 0x055 (skippable, ignore) [MP3, TMT, MP4, TM2020]
 
 0x056 (skippable) [MP4, TM2020] // light settings
- version // = 3
+ version = 3
  int
- timeofday DayTime
+ timeofday? DayTime
  int
  bool DynamicDaylight
  timeint? DayDuration
@@ -322,7 +330,7 @@ CGameCtnChallenge 0x03043000 // A map
 
 archive BotPath
  int Clan
- list<Vec3> Path
+ list<vec3> Path
  bool IsFlying
  CGameWaypointSpecialProperty WaypointSpecialProperty
  bool IsAutonomous
