@@ -2,10 +2,12 @@
 
 public class ChunkLSerializerTests
 {
-    [Fact]
-    public void Deserialize()
+    [Theory]
+    [InlineData("CGameCtnChallenge")]
+    [InlineData("CGameCtnBlock")]
+    public void Deserialize(string className)
     {
-        var reader = new StreamReader("Files/CGameCtnChallenge.chunkl");
+        var reader = new StreamReader($"Files/{className}.chunkl");
         var dataModel = ChunkLSerializer.Deserialize(reader);
     }
 }

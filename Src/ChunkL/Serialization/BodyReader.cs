@@ -28,7 +28,7 @@ internal sealed partial class BodyReader(TextReader reader)
     public const string MemberAssignRegexPattern = @"^(\w+)\s*=\s*(\w+)\s*(\/\/\s*(.+))?";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string ArchiveDefinitionRegexPattern = @"^archive\s+(\w+)\s*(\/\/\s*(.+))?";
+    public const string ArchiveDefinitionRegexPattern = @"^archive(\s+(\w+))?\s*(\/\/\s*(.+))?";
 
 #if NETSTANDARD2_0
     private static readonly Regex chunkDefinitionRegex = new(ChunkDefinitionRegexPattern, RegexOptions.Compiled);
@@ -102,8 +102,8 @@ internal sealed partial class BodyReader(TextReader reader)
 
                 var archiveDefinition = new ArchiveDefinition
                 {
-                    Name = archiveDefinitionMatch.Groups[1].Value,
-                    Description = chunkDefinitionMatch.Groups[3].Value
+                    Name = archiveDefinitionMatch.Groups[2].Value,
+                    Description = chunkDefinitionMatch.Groups[4].Value
                 };
 
                 archiveDefinitions.Add(archiveDefinition);
