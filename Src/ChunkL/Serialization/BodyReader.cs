@@ -10,10 +10,10 @@ internal sealed partial class BodyReader(TextReader reader)
     private readonly TextReader reader = reader ?? throw new ArgumentNullException(nameof(reader));
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string ChunkDefinitionRegexPattern = @"^((0x)?([0-9a-fA-F]{3}))(\s+\((.+?)\))?(\s+\[(.+?)\])?\s*(\/\/\s*(.+))?";
+    public const string ChunkDefinitionRegexPattern = @"^(?:(?:0x)?([0-9a-fA-F]{3}))(?:\s+\((.+?)\))?(?:\s+\[(.+?)\])?\s*(?:\/\/\s*(.+))?";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string ChunkMemberRegexPattern = @"^(\s+)(.+?)(\?)?(\s+(\w+|"".+""))?(\s*=\s*([\w.?]+))?\s*(\/\/\s*(.+))?$";
+    public const string ChunkMemberRegexPattern = @"^(\s+)(.+?)(\?)?(?:\s+(\w+|"".+""))?(?:\s*=\s*([\w.?]+))?\s*(?:\/\/\s*(.+)?)?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string MemberVersionRegexPattern = @"^v([0-9]+)([+-=])$";
@@ -22,13 +22,16 @@ internal sealed partial class BodyReader(TextReader reader)
     public const string MemberEnumRegexPattern = @"^(int|byte)<(\w+)>$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string MemberIfRegexPattern = @"^if\s+(!?\w+)(\s*(>=|<=|==|>|<)\s*(\w+))?\s*(\/\/\s*(.+))?";
+    public const string MemberIfRegexPattern = @"^if\s+([^\/]+)\s*(?:\/\/\s*(.+))?";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string MemberAssignRegexPattern = @"^(\w+)\s*=\s*(\w+)\s*(\/\/\s*(.+))?";
+    public const string MemberAssignRegexPattern = @"^(\w+)\s*=\s*(\w+)\s*(?:\/\/\s*(.+))?";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string ArchiveDefinitionRegexPattern = @"^archive(\s+(\w+))?\s*(\/\/\s*(.+))?";
+    public const string ArchiveDefinitionRegexPattern = @"^archive(?:\s+(\w+))?\s*(?:\/\/\s*(.+))?";
+
+    [StringSyntax(StringSyntaxAttribute.Regex)]
+    public const string IfConditionRegexPattern = @"^(!?\w+$)|^(?:(\w+|\(.+\)+)(?:\s*(>=|<=|!=|==|>|<)\s*([\w-]+)))$";
 
 #if NETSTANDARD2_0
     private static readonly Regex chunkDefinitionRegex = new(ChunkDefinitionRegexPattern, RegexOptions.Compiled);
@@ -51,6 +54,9 @@ internal sealed partial class BodyReader(TextReader reader)
 
     private static readonly Regex archiveDefinitionRegex = new(ArchiveDefinitionRegexPattern, RegexOptions.Compiled);
     private static Regex ArchiveDefinitionRegex() => archiveDefinitionRegex;
+
+    private static readonly Regex ifConditionRegex = new(IfConditionRegexPattern, RegexOptions.Compiled);
+    private static Regex IfConditionRegex() => ifConditionRegex;
 #else
     [GeneratedRegex(ChunkDefinitionRegexPattern)]
     private static partial Regex ChunkDefinitionRegex();
@@ -72,6 +78,9 @@ internal sealed partial class BodyReader(TextReader reader)
 
     [GeneratedRegex(ArchiveDefinitionRegexPattern)]
     private static partial Regex ArchiveDefinitionRegex();
+
+    [GeneratedRegex(IfConditionRegexPattern)]
+    private static partial Regex IfConditionRegex();
 #endif
 
     public BodyModel Read()
@@ -102,8 +111,8 @@ internal sealed partial class BodyReader(TextReader reader)
 
                 var archiveDefinition = new ArchiveDefinition
                 {
-                    Name = archiveDefinitionMatch.Groups[2].Value,
-                    Description = chunkDefinitionMatch.Groups[4].Value
+                    Name = archiveDefinitionMatch.Groups[1].Value,
+                    Description = archiveDefinitionMatch.Groups[2].Value
                 };
 
                 archiveDefinitions.Add(archiveDefinition);
@@ -115,12 +124,12 @@ internal sealed partial class BodyReader(TextReader reader)
 
             var chunkDefinition = new ChunkDefinition
             {
-                Id = uint.Parse(chunkDefinitionMatch.Groups[3].Value, NumberStyles.HexNumber),
-                Description = chunkDefinitionMatch.Groups[9].Value
+                Id = uint.Parse(chunkDefinitionMatch.Groups[1].Value, NumberStyles.HexNumber),
+                Description = chunkDefinitionMatch.Groups[4].Value
             };
 
-            var properties = chunkDefinitionMatch.Groups[5].Value;
-            var versions = chunkDefinitionMatch.Groups[7].Value;
+            var properties = chunkDefinitionMatch.Groups[2].Value;
+            var versions = chunkDefinitionMatch.Groups[3].Value;
 
             if (!string.IsNullOrEmpty(properties))
             {
@@ -234,12 +243,23 @@ internal sealed partial class BodyReader(TextReader reader)
 
             if (ifMatch.Success)
             {
+                var condition = ifMatch.Groups[1].Value;
+
+                var conditionMatch = IfConditionRegex().Match(condition);
+
+                if (!conditionMatch.Success)
+                {
+                    throw new Exception("Deserialize failed: Expected if condition");
+                }
+
+                var left = string.IsNullOrEmpty(conditionMatch.Groups[1].Value) ? conditionMatch.Groups[2].Value : conditionMatch.Groups[1].Value;
+
                 var ifMember = new ChunkIfStatement
                 {
-                    Left = ifMatch.Groups[1].Value,
-                    Operator = ifMatch.Groups[3].Value,
-                    Right = ifMatch.Groups[4].Value,
-                    Description = ifMatch.Groups[6].Value
+                    Left = left,
+                    Operator = conditionMatch.Groups[3].Value,
+                    Right = conditionMatch.Groups[4].Value,
+                    Description = ifMatch.Groups[2].Value
                 };
 
                 members.Add(ifMember);
@@ -257,7 +277,7 @@ internal sealed partial class BodyReader(TextReader reader)
             }
 
             var type = memberMatch.Groups[2].Value;
-            var memberDescription = memberMatch.Groups[9].Value;
+            var memberDescription = memberMatch.Groups[6].Value;
 
             var versionMatch = MemberVersionRegex().Match(type);
 
@@ -285,9 +305,9 @@ internal sealed partial class BodyReader(TextReader reader)
             }
 
             var nullable = memberMatch.Groups[3].Success;
-            var name = memberMatch.Groups[5].Value.Trim('"');
+            var name = memberMatch.Groups[4].Value.Trim('"');
             if (!string.IsNullOrWhiteSpace(name)) existingNames.Add(name);
-            var defaultValue = memberMatch.Groups[7].Value;
+            var defaultValue = memberMatch.Groups[5].Value;
 
             var enumMatch = MemberEnumRegex().Match(type);
 
@@ -321,7 +341,7 @@ internal sealed partial class BodyReader(TextReader reader)
                     {
                         Left = left,
                         Right = assignMatch.Groups[2].Value,
-                        Description = assignMatch.Groups[4].Value
+                        Description = assignMatch.Groups[3].Value
                     });
 
                     continue;
