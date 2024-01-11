@@ -10,8 +10,13 @@ public sealed class ArchiveDefinition : IChunkMemberBlock
 
     public override string ToString()
     {
-        var sb = new StringBuilder("archive ");
-        sb.Append(Name);
+        var sb = new StringBuilder("archive");
+
+        if (!string.IsNullOrEmpty(Name))
+        {
+            sb.Append(' ');
+            sb.Append(Name);
+        }
 
         if (!string.IsNullOrEmpty(Description))
         {
