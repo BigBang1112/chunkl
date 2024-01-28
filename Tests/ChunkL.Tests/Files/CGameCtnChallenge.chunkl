@@ -11,7 +11,7 @@ CGameCtnChallenge 0x03043000 // A map.
   timeint SilverTime
   timeint GoldTime
   timeint AuthorTime
-  v3=
+  v2=
    byte
   v4+
    int Cost
@@ -68,16 +68,6 @@ CGameCtnChallenge 0x03043000 // A map.
  string Xml
 
 0x007 (header, struct: SHeaderThumbnail) [TMU, TMF, MP3, TMT, MP4, TM2020] // thumbnail
- version = 1
- v0=
-  return
- int thumbnailSize
- marker "<Thumbnail.jpg>"
- data[thumbnailSize] Thumbnail
- marker "</Thumbnail.jpg>"
- marker "<Comments>"
- string Comments
- marker "</Comments>"
 
 0x008 (header, struct: SHeaderAuthorInfo) [MP3, TMT, MP4, TM2020] // author info
  version
@@ -93,7 +83,7 @@ CGameCtnChallenge 0x03043000 // A map.
 0x00F [TM10] // TM1.0 block data
  ident MapInfo
  int3 Size
- list<CGameCtnBlock>_deprec Blocks
+ list<CGameCtnBlock*>_deprec Blocks
  bool NeedUnlock
  ident Decoration
 
@@ -106,6 +96,12 @@ CGameCtnChallenge 0x03043000 // A map.
  string MapName
 
 0x013 // legacy block data
+ ident MapInfo
+ string MapName
+ ident Decoration
+ int3 Size
+ bool
+ list<CGameCtnBlock> Blocks
 
 0x014 (skippable) [TMSX, TMNESWC, TMU] // legacy password
  bool
