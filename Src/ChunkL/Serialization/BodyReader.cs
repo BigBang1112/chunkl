@@ -33,6 +33,9 @@ internal sealed partial class BodyReader(TextReader reader)
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string IfConditionRegexPattern = @"^(!?\w+$)|^(?:(\w+|\(.+\)+)(?:\s*(>=|<=|!=|==|>|<)\s*([\w-]+)))$";
 
+    [StringSyntax(StringSyntaxAttribute.Regex)]
+    public const string TypeRegexPattern = @"^(\w+)(?:<(\w+)(\*|\^)?>)?(\*|\^)?(\[(\w*)\])?(_deprec)?$";
+
 #if NETSTANDARD2_0
     private static readonly Regex chunkDefinitionRegex = new(ChunkDefinitionRegexPattern, RegexOptions.Compiled);
     private static Regex ChunkDefinitionRegex() => chunkDefinitionRegex;
@@ -57,6 +60,9 @@ internal sealed partial class BodyReader(TextReader reader)
 
     private static readonly Regex ifConditionRegex = new(IfConditionRegexPattern, RegexOptions.Compiled);
     private static Regex IfConditionRegex() => ifConditionRegex;
+
+    private static readonly Regex typeRegex = new(TypeRegexPattern, RegexOptions.Compiled);
+    private static Regex TypeRegex() => typeRegex;
 #else
     [GeneratedRegex(ChunkDefinitionRegexPattern)]
     private static partial Regex ChunkDefinitionRegex();
@@ -81,6 +87,9 @@ internal sealed partial class BodyReader(TextReader reader)
 
     [GeneratedRegex(IfConditionRegexPattern)]
     private static partial Regex IfConditionRegex();
+
+    [GeneratedRegex(TypeRegexPattern)]
+    private static partial Regex TypeRegex();
 #endif
 
     public BodyModel Read()
@@ -318,7 +327,7 @@ internal sealed partial class BodyReader(TextReader reader)
 
                 members.Add(new ChunkEnum
                 {
-                    Type = type,
+                    Type = new PropertyType { PrimaryType = type },
                     IsNullable = nullable,
                     Name = name,
                     Description = memberDescription,
@@ -348,9 +357,22 @@ internal sealed partial class BodyReader(TextReader reader)
                 }
             }
 
+            var typeBreakdown = TypeRegex().Match(type);
+
+            var propertyType = new PropertyType
+            {
+                PrimaryType = typeBreakdown.Groups[1].Value,
+                GenericType = typeBreakdown.Groups[2].Value,
+                GenericTypeMarker = typeBreakdown.Groups[3].Value,
+                PrimaryTypeMarker = typeBreakdown.Groups[4].Value,
+                IsArray = typeBreakdown.Groups[5].Success,
+                ArrayLength = typeBreakdown.Groups[6].Value,
+                IsDeprec = typeBreakdown.Groups[7].Success
+            };
+
             members.Add(new ChunkProperty
             {
-                Type = type,
+                Type = propertyType,
                 IsNullable = nullable,
                 Name = name,
                 Description = memberDescription,

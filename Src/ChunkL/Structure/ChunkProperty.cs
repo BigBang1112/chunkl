@@ -4,7 +4,7 @@ namespace ChunkL.Structure;
 
 public class ChunkProperty : IChunkMember
 {
-    public required string Type { get; init; }
+    public required PropertyType Type { get; init; }
     public required bool IsNullable { get; init; }
     public required string Name { get; init; }
     public required string Description { get; init; }
@@ -14,7 +14,7 @@ public class ChunkProperty : IChunkMember
 
     public override string ToString()
     {
-        var sb = new StringBuilder(Type);
+        var sb = new StringBuilder(Type.ToString());
 
         if (IsNullable)
         {

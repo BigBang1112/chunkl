@@ -18,7 +18,7 @@ public sealed class ChunkDefinition : IChunkMemberBlock
         get
         {
             if (versionMemberChecked) return versionMember;
-            versionMember = Members.OfType<ChunkProperty>().FirstOrDefault(p => p.Type is "version" or "versionb");
+            versionMember = Members.OfType<ChunkProperty>().FirstOrDefault(p => p.Type.PrimaryType is "version" or "versionb");
             versionMemberChecked = true;
             return versionMember;
         }

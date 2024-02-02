@@ -8,7 +8,7 @@ public sealed class ChunkEnum : ChunkProperty
 
     public override string ToString()
     {
-        var sb = new StringBuilder(Type);
+        var sb = new StringBuilder(Type.ToString());
         sb.Append('<');
         sb.Append(EnumType);
         sb.Append('>');
