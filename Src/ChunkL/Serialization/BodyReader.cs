@@ -10,10 +10,10 @@ internal sealed partial class BodyReader(TextReader reader)
     private readonly TextReader reader = reader ?? throw new ArgumentNullException(nameof(reader));
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string ChunkDefinitionRegexPattern = @"^(?:(?:0x)?([0-9a-fA-F]{3}))(?:\s+\((.+?)\))?(?:\s+\[(.+?)\])?\s*(?:\/\/\s*(.+))?";
+    public const string ChunkDefinitionRegexPattern = @"^(?:(?:0x)?([0-9a-fA-F]{3}))(?:\s+\((.+?)\))?(?:\s+\[(.+?)\])?\s*(?:\/\/\s*(.*))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string ChunkMemberRegexPattern = @"^(\s+)(.+?)(\?)?(?:\s+(\w+|"".+""))?(?:\s*=\s*([\w.?]+))?\s*(?:\/\/\s*(.+)?)?$";
+    public const string ChunkMemberRegexPattern = @"^(\s+)(.+?)(\?)?(?:\s+(\w+|"".+""))?(?:\s*=\s*([\w.?]+))?\s*(?:\/\/\s*(.*))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string MemberVersionRegexPattern = @"^v([0-9]+)([+-=])$";
@@ -25,16 +25,22 @@ internal sealed partial class BodyReader(TextReader reader)
     public const string MemberIfRegexPattern = @"^if\s+([^\/]+)\s*(?:\/\/\s*(.+))?";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string MemberAssignRegexPattern = @"^(\w+)\s*=\s*(\w+)\s*(?:\/\/\s*(.+))?";
+    public const string MemberAssignRegexPattern = @"^(\w+)\s*=\s*(\w+)\s*(?:\/\/\s*(.*))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string ArchiveDefinitionRegexPattern = @"^archive(?:\s+(\w+))?\s*(?:\/\/\s*(.+))?";
+    public const string ArchiveDefinitionRegexPattern = @"^archive(?:\s+(\w+))?\s*(?:\/\/\s*(.*))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string IfConditionRegexPattern = @"^(!?\w+$)|^(?:(\w+|\(.+\)+)(?:\s*(>=|<=|!=|==|>|<)\s*([\w-]+)))$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string TypeRegexPattern = @"^(\w+)(?:<(\w+)(\*|\^)?>)?(\*|\^)?(\[(\w*)\])?(_deprec)?$";
+
+    [StringSyntax(StringSyntaxAttribute.Regex)]
+    public const string EnumDefinitionRegexPattern = @"^enum(?:\s+(\w+))\s*(?:\/\/\s*(.*))?$";
+
+    [StringSyntax(StringSyntaxAttribute.Regex)]
+    public const string EnumValueRegexPattern = @"^(\s+)(\w+)(?:\s*=\s*([\w.?]+))?\s*(?:\/\/\s*(.*))?$";
 
 #if NETSTANDARD2_0
     private static readonly Regex chunkDefinitionRegex = new(ChunkDefinitionRegexPattern, RegexOptions.Compiled);
@@ -63,6 +69,12 @@ internal sealed partial class BodyReader(TextReader reader)
 
     private static readonly Regex typeRegex = new(TypeRegexPattern, RegexOptions.Compiled);
     private static Regex TypeRegex() => typeRegex;
+
+    private static readonly Regex enumDefinitionRegex = new(EnumDefinitionRegexPattern, RegexOptions.Compiled);
+    private static Regex EnumDefinitionRegex() => enumDefinitionRegex;
+
+    private static readonly Regex enumValueRegex = new(EnumValueRegexPattern, RegexOptions.Compiled);
+    private static Regex EnumValueRegex() => enumValueRegex;
 #else
     [GeneratedRegex(ChunkDefinitionRegexPattern)]
     private static partial Regex ChunkDefinitionRegex();
@@ -90,12 +102,19 @@ internal sealed partial class BodyReader(TextReader reader)
 
     [GeneratedRegex(TypeRegexPattern)]
     private static partial Regex TypeRegex();
+
+    [GeneratedRegex(EnumDefinitionRegexPattern)]
+    private static partial Regex EnumDefinitionRegex();
+
+    [GeneratedRegex(EnumValueRegexPattern)]
+    private static partial Regex EnumValueRegex();
 #endif
 
     public BodyModel Read()
     {
         var chunkDefinitions = new List<ChunkDefinition>();
         var archiveDefinitions = new List<ArchiveDefinition>();
+        var enumDefinitions = new List<EnumDefinition>();
         var existingNames = new HashSet<string>();
 
         // read chunk definitions until end
@@ -115,7 +134,24 @@ internal sealed partial class BodyReader(TextReader reader)
 
                 if (!archiveDefinitionMatch.Success)
                 {
-                    throw new Exception("Deserialize failed: Expected chunk or archive definition");
+                    var enumDefinitionMatch = EnumDefinitionRegex().Match(chunkDef);
+
+                    if (!enumDefinitionMatch.Success)
+                    {
+                        throw new Exception("Deserialize failed: Expected chunk/archive/enum definition");
+                    }
+
+                    var enumDefinition = new EnumDefinition
+                    {
+                        Name = enumDefinitionMatch.Groups[1].Value,
+                        Description = enumDefinitionMatch.Groups[2].Value
+                    };
+
+                    ReadEnumValues(enumDefinition.Values);
+
+                    enumDefinitions.Add(enumDefinition);
+
+                    continue;
                 }
 
                 var archiveDefinition = new ArchiveDefinition
@@ -158,7 +194,8 @@ internal sealed partial class BodyReader(TextReader reader)
         return new BodyModel
         {
             ChunkDefinitions = chunkDefinitions,
-            ArchiveDefinitions = archiveDefinitions
+            ArchiveDefinitions = archiveDefinitions,
+            EnumDefinitions = enumDefinitions
         };
     }
 
@@ -381,5 +418,46 @@ internal sealed partial class BodyReader(TextReader reader)
         }
 
         return null;
+    }
+
+    private void ReadEnumValues(List<EnumValue> values)
+    {
+        var currentIndent = 0;
+
+        string? value;
+        while (!string.IsNullOrWhiteSpace(value = reader.ReadLine()))
+        {
+            var valueMatch = EnumValueRegex().Match(value);
+
+            if (!valueMatch.Success)
+            {
+                throw new Exception("Deserialize failed: Expected enum value");
+            }
+
+            var givenIndent = valueMatch.Groups[1].Value.Length;
+
+            if (givenIndent < currentIndent)
+            {
+                return;
+            }
+
+            if (currentIndent != 0 && givenIndent > currentIndent)
+            {
+                throw new Exception("Deserialize failed: Expected enum value");
+            }
+
+            currentIndent = givenIndent;
+
+            var name = valueMatch.Groups[2].Value;
+            var explicitValue = valueMatch.Groups[3].Value;
+            var description = valueMatch.Groups[4].Value;
+
+            values.Add(new EnumValue
+            {
+                Name = name,
+                ExplicitValue = explicitValue,
+                Description = description
+            });
+        }
     }
 }
