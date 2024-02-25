@@ -42,6 +42,9 @@ internal sealed partial class BodyReader(TextReader reader)
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string EnumValueRegexPattern = @"^(\s+)(\w+)(?:\s*=\s*([\w.?]+))?\s*(?:\/\/\s*(.*))?$";
 
+    [StringSyntax(StringSyntaxAttribute.Regex)]
+    public const string ThrowRegexPattern = @"^\s+throw(?:\s+(\w+)(?:\(""(.*)""\))?)?\s*(?:\/\/.*)?$";
+
 #if NETSTANDARD2_0
     private static readonly Regex chunkDefinitionRegex = new(ChunkDefinitionRegexPattern, RegexOptions.Compiled);
     private static Regex ChunkDefinitionRegex() => chunkDefinitionRegex;
@@ -75,6 +78,9 @@ internal sealed partial class BodyReader(TextReader reader)
 
     private static readonly Regex enumValueRegex = new(EnumValueRegexPattern, RegexOptions.Compiled);
     private static Regex EnumValueRegex() => enumValueRegex;
+
+    private static readonly Regex throwRegex = new(ThrowRegexPattern, RegexOptions.Compiled);
+    private static Regex ThrowRegex() => throwRegex;
 #else
     [GeneratedRegex(ChunkDefinitionRegexPattern)]
     private static partial Regex ChunkDefinitionRegex();
@@ -108,6 +114,9 @@ internal sealed partial class BodyReader(TextReader reader)
 
     [GeneratedRegex(EnumValueRegexPattern)]
     private static partial Regex EnumValueRegex();
+
+    [GeneratedRegex(ThrowRegexPattern)]
+    private static partial Regex ThrowRegex();
 #endif
 
     public BodyModel Read()
@@ -348,6 +357,25 @@ internal sealed partial class BodyReader(TextReader reader)
                 {
                     goto MemberMatched;
                 }
+            }
+
+            if (type == "throw" || type.StartsWith("throw "))
+            {
+                var throwMatch = ThrowRegex().Match(member);
+
+                if (!throwMatch.Success)
+                {
+                    throw new Exception("Deserialize failed: Expected throw statement");
+                }
+
+                members.Add(new ChunkThrow
+                {
+                    Exception = throwMatch.Groups[1].Value,
+                    Message = throwMatch.Groups[2].Value,
+                    Description = memberDescription
+                });
+
+                continue;
             }
 
             var nullable = memberMatch.Groups[3].Success;
