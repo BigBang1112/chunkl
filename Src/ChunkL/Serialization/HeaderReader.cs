@@ -13,7 +13,7 @@ internal sealed partial class HeaderReader(TextReader reader)
     public const string DescriberRegexPattern = @"^(\w+)\s+(0x)?([0-9a-fA-F]{8})\s*(\/\/\s*(.+))?";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string FeatureRegexPattern = @"^-\s*(\w+):\s*(.+)";
+    public const string FeatureRegexPattern = @"^-\s*(\w+)(?::\s*(\w.*))?$";
 
 #if NETSTANDARD2_0
     private static readonly Regex describerRegex = new(DescriberRegexPattern, RegexOptions.Compiled);
