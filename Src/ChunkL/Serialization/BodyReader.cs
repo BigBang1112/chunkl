@@ -13,7 +13,7 @@ internal sealed partial class BodyReader(TextReader reader)
     public const string ChunkDefinitionRegexPattern = @"^(?:(?:0x)?([0-9a-fA-F]{3}))(?:\s+\((.+?)\))?(?:\s+\[(.+?)\])?\s*(?:\/\/\s*(.*))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string ChunkMemberRegexPattern = @"^(\s+)(.+?)(\?)?(?:\s+(\w+|"".+""))?(?:\s*=\s*([\w.?]+))?\s*(?:\/\/\s*(.*))?$";
+    public const string ChunkMemberRegexPattern = @"^(\s+)(.+?)(\?)?(?:\s+(\w+|"".+""))?(?:\s*=\s*([\w.?]+))?(?:\s+\((.+?)\))?\s*(?:\/\/\s*(.*))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string MemberVersionRegexPattern = @"^v([0-9]+)([+-=])$";
@@ -187,7 +187,7 @@ internal sealed partial class BodyReader(TextReader reader)
 
             if (!string.IsNullOrEmpty(properties))
             {
-                ReadChunkProperties(chunkDefinition.Properties, properties);
+                ReadProperties(chunkDefinition.Properties, properties);
             }
 
             if (!string.IsNullOrEmpty(versions))
@@ -208,7 +208,7 @@ internal sealed partial class BodyReader(TextReader reader)
         };
     }
 
-    private void ReadChunkProperties(Dictionary<string, string> dictionary, string input)
+    private static void ReadProperties(Dictionary<string, string> dictionary, string input)
     {
         var split = input.Split(',');
 
@@ -218,7 +218,7 @@ internal sealed partial class BodyReader(TextReader reader)
 
             if (propSplit.Length < 1 || propSplit.Length > 2)
             {
-                throw new Exception("Deserialize failed: Expected chunk properties");
+                throw new Exception("Deserialize failed: Expected properties");
             }
 
             var key = propSplit[0].Trim();
@@ -332,7 +332,16 @@ internal sealed partial class BodyReader(TextReader reader)
             }
 
             var type = memberMatch.Groups[2].Value;
-            var memberDescription = memberMatch.Groups[6].Value;
+            var properties = memberMatch.Groups[6].Value;
+
+            var propertiesDict = default(Dictionary<string, string>);
+            if (!string.IsNullOrEmpty(properties))
+            {
+                propertiesDict = [];
+                ReadProperties(propertiesDict, properties);
+            }
+
+            var memberDescription = memberMatch.Groups[7].Value;
 
             var versionMatch = MemberVersionRegex().Match(type);
 
@@ -397,7 +406,8 @@ internal sealed partial class BodyReader(TextReader reader)
                     Name = name,
                     Description = memberDescription,
                     EnumType = enumType,
-                    DefaultValue = defaultValue
+                    DefaultValue = defaultValue,
+                    Properties = propertiesDict ?? []
                 });
 
                 continue;
@@ -441,7 +451,8 @@ internal sealed partial class BodyReader(TextReader reader)
                 IsNullable = nullable,
                 Name = name,
                 Description = memberDescription,
-                DefaultValue = defaultValue
+                DefaultValue = defaultValue,
+                Properties = propertiesDict ?? []
             });
         }
 
