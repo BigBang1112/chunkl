@@ -10,7 +10,7 @@ internal sealed partial class BodyReader(TextReader reader)
     private readonly TextReader reader = reader ?? throw new ArgumentNullException(nameof(reader));
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string ChunkDefinitionRegexPattern = @"^(?:(?:0x)?([0-9a-fA-F]{3}))(?:\s+\((.+?)\))?(?:\s+\[(.+?)\])?\s*(?:\/\/\s*(.*))?$";
+    public const string ChunkDefinitionRegexPattern = @"^(?:(?:0x)?([0-9a-fA-F]{3}|[0-9a-fA-F]{8}))(?:\s+\((.+?)\))?(?:\s+\[(.+?)\])?\s*(?:\/\/\s*(.*))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string ChunkMemberRegexPattern = @"^(\s+)(.+?)(\?)?(?:\s+(\w+|"".+""))?(?:\s*=\s*([\w.?]+))?(?:\s+\((.+?)\))?\s*(?:\/\/\s*(.*))?$";
