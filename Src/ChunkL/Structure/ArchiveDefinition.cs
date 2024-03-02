@@ -19,6 +19,33 @@ public sealed class ArchiveDefinition : IChunkMemberBlock
             sb.Append(Name);
         }
 
+        if (Properties.Count > 0)
+        {
+            sb.Append(" (");
+
+            var first = true;
+
+            foreach (var pair in Properties)
+            {
+                if (!first)
+                {
+                    sb.Append(", ");
+                }
+
+                sb.Append(pair.Key);
+
+                if (!string.IsNullOrEmpty(pair.Value))
+                {
+                    sb.Append(": ");
+                    sb.Append(pair.Value);
+                }
+
+                first = false;
+            }
+
+            sb.Append(')');
+        }
+
         if (!string.IsNullOrEmpty(Description))
         {
             sb.Append(" // ");
