@@ -28,7 +28,7 @@ internal sealed partial class BodyReader(TextReader reader)
     public const string MemberAssignRegexPattern = @"^(\w+)\s*=\s*(\w+)\s*(?:\/\/\s*(.*))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string ArchiveDefinitionRegexPattern = @"^archive(?:\s+(\w+))?\s*(?:\/\/\s*(.*))?$";
+    public const string ArchiveDefinitionRegexPattern = @"^archive(?:\s+(\w+))?(?:\s+\((.+?)\))?\s*(?:\/\/\s*(.*))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string IfConditionRegexPattern = @"^(!?\w+$)|^(?:(\w+|\(.+\)+)(?:\s*(>=|<=|!=|==|>|<)\s*([\w-]+)))$";
@@ -166,8 +166,10 @@ internal sealed partial class BodyReader(TextReader reader)
                 var archiveDefinition = new ArchiveDefinition
                 {
                     Name = archiveDefinitionMatch.Groups[1].Value,
-                    Description = archiveDefinitionMatch.Groups[2].Value
+                    Description = archiveDefinitionMatch.Groups[3].Value
                 };
+
+                ReadProperties(archiveDefinition.Properties, archiveDefinitionMatch.Groups[2].Value);
 
                 archiveDefinitions.Add(archiveDefinition);
 
@@ -210,6 +212,11 @@ internal sealed partial class BodyReader(TextReader reader)
 
     private static void ReadProperties(Dictionary<string, string> dictionary, string input)
     {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return;
+        }
+
         var split = input.Split(',');
 
         foreach (var prop in split)
@@ -233,7 +240,7 @@ internal sealed partial class BodyReader(TextReader reader)
         }
     }
 
-    private void ReadChunkVersions(Dictionary<string, int?> dictionary, string input)
+    private static void ReadChunkVersions(Dictionary<string, int?> dictionary, string input)
     {
         var split = input.Split(',');
 

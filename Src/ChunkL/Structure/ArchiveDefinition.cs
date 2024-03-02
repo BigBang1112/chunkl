@@ -6,6 +6,7 @@ public sealed class ArchiveDefinition : IChunkMemberBlock
 {
     public required string Name { get; init; }
     public required string Description { get; init; }
+    public Dictionary<string, string> Properties { get; init; } = [];
     public List<IChunkMember> Members { get; init; } = [];
 
     public override string ToString()
