@@ -22,7 +22,7 @@ internal sealed partial class BodyReader(TextReader reader)
     public const string MemberEnumRegexPattern = @"^(int|byte)<(\w+)>$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string MemberIfRegexPattern = @"^if\s+([^\/]+)\s*(?:\/\/\s*(.+))?";
+    public const string MemberIfRegexPattern = @"^if\s+(.*?)(?:\/\/)?\s*(?:\/\/\s*(.*))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string MemberAssignRegexPattern = @"^(\w+)\s*=\s*(\w+)\s*(?:\/\/\s*(.*))?$";
@@ -31,7 +31,7 @@ internal sealed partial class BodyReader(TextReader reader)
     public const string ArchiveDefinitionRegexPattern = @"^archive(?:\s+(\w+))?(?:\s+\((.+?)\))?\s*(?:\/\/\s*(.*))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string IfConditionRegexPattern = @"^(!?\w+$)|^(?:(\w+|\(.+\)+)(?:\s*(>=|<=|!=|==|>|<)\s*([\w-]+)))$";
+    public const string IfConditionRegexPattern = @"\(|\)|&&|&|\|\||\||""\w+""|\w+|""|<<|>>|!=|==|>=|<=|>|<|!|\+|-|\*|/";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string TypeRegexPattern = @"^(\w+)(?:<(\w+)(\*|\^)?>)?(\*|\^)?(\[(\w*)\])?(_deprec)?$";
@@ -307,22 +307,22 @@ internal sealed partial class BodyReader(TextReader reader)
             {
                 var condition = ifMatch.Groups[1].Value;
 
-                var conditionMatch = IfConditionRegex().Match(condition);
+                var matches = IfConditionRegex().Matches(condition);
 
-                if (!conditionMatch.Success)
+                if (matches.Count == 0)
                 {
                     throw new Exception("Deserialize failed: Expected if condition");
                 }
 
-                var left = string.IsNullOrEmpty(conditionMatch.Groups[1].Value) ? conditionMatch.Groups[2].Value : conditionMatch.Groups[1].Value;
-
                 var ifMember = new ChunkIfStatement
                 {
-                    Left = left,
-                    Operator = conditionMatch.Groups[3].Value,
-                    Right = conditionMatch.Groups[4].Value,
                     Description = ifMatch.Groups[2].Value
                 };
+
+                foreach (var match in matches.Cast<Match>())
+                {
+                    ifMember.Condition.Add(match.Value);
+                }
 
                 members.Add(ifMember);
 
