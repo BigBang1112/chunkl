@@ -21,7 +21,7 @@ public sealed class ChunkEnum : ChunkProperty
         sb.Append(' ');
         sb.Append(Name);
 
-        if (Properties.Count > 0)
+        if (Properties?.Count > 0)
         {
             sb.Append(" (");
 
