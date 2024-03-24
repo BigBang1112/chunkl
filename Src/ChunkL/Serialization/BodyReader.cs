@@ -31,7 +31,7 @@ internal sealed partial class BodyReader(TextReader reader)
     public const string ArchiveDefinitionRegexPattern = @"^archive(?:\s+(\w+))?(?:\s+\((.+?)\))?\s*(?:\/\/\s*(.*))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string IfConditionRegexPattern = @"\(|\)|&&|&|\|\||\||"".*""|\w+|""|<<|>>|!=|==|>=|<=|>|<|!|\+|-|\*|/";
+    public const string IfConditionRegexPattern = @"\(|\)|&&|&|\|\||\||"".*""|\w+|""|<<|>>|!=|==|>=|<=|>|<|!|\+|-|\*|/|::";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string TypeRegexPattern = @"^(\w+)(?:<(\w+)(\*|\^)?>)?(\*|\^)?(\[(\w*)\])?(_deprec)?$";
