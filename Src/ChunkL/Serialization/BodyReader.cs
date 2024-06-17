@@ -19,7 +19,7 @@ internal sealed partial class BodyReader(TextReader reader)
     public const string MemberVersionRegexPattern = @"^v([0-9]+)([+-=])$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string MemberEnumRegexPattern = @"^(int|byte)<(\w+)>$";
+    public const string MemberEnumRegexPattern = @"^(int|byte)<([\w.]+)>$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string MemberIfRegexPattern = @"^if\s+(.*?)(?:\/\/)?\s*(?:\/\/\s*(.*))?$";
@@ -34,7 +34,7 @@ internal sealed partial class BodyReader(TextReader reader)
     public const string IfConditionRegexPattern = @"\(|\)|&&|&|\|\||\||"".*""|\w+|""|<<|>>|!=|==|>=|<=|>|<|!|\+|-|\*|/|::";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string TypeRegexPattern = @"^(\w+)(?:<(\w+)(\*|\^)?>)?(\*|\^)?(\[(\w*)\])?(_deprec)?$";
+    public const string TypeRegexPattern = @"^(\w+)(?:<([\w.]+)(\*|\^)?>)?(\*|\^)?(\[(\w*)\])?(_deprec)?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string EnumDefinitionRegexPattern = @"^enum(?:\s+(\w+))\s*(?:\/\/\s*(.*))?$";
