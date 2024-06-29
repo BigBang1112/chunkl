@@ -34,7 +34,7 @@ internal sealed partial class BodyReader(TextReader reader)
     public const string IfConditionRegexPattern = @"\(|\)|&&|&|\|\||\||"".*""|\w+|""|<<|>>|!=|==|>=|<=|>|<|!|\+|-|\*|/|::";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string TypeRegexPattern = @"^(\w+)(?:<([\w.]+)(\*|\^)?>)?(\*|\^)?(\[(\w*)\])?(_deprec)?$";
+    public const string TypeRegexPattern = @"^(\w+)(?:<([\w.]+)(\*|\^)?(\?)?>)?(\*|\^)?(\?)?(\[(\w*)\])?(_deprec)?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string EnumDefinitionRegexPattern = @"^enum(?:\s+(\w+))\s*(?:\/\/\s*(.*))?$";
@@ -446,10 +446,12 @@ internal sealed partial class BodyReader(TextReader reader)
                 PrimaryType = typeBreakdown.Groups[1].Value,
                 GenericType = typeBreakdown.Groups[2].Value,
                 GenericTypeMarker = typeBreakdown.Groups[3].Value,
-                PrimaryTypeMarker = typeBreakdown.Groups[4].Value,
-                IsArray = typeBreakdown.Groups[5].Success,
-                ArrayLength = typeBreakdown.Groups[6].Value,
-                IsDeprec = typeBreakdown.Groups[7].Success
+                GenericTypeNullable = typeBreakdown.Groups[4].Value == "?",
+                PrimaryTypeMarker = typeBreakdown.Groups[5].Value,
+                PrimaryTypeNullable = typeBreakdown.Groups[6].Value == "?",
+                IsArray = typeBreakdown.Groups[7].Success,
+                ArrayLength = typeBreakdown.Groups[8].Value,
+                IsDeprec = typeBreakdown.Groups[9].Success
             };
 
             members.Add(new ChunkProperty
