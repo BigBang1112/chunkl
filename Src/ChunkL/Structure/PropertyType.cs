@@ -7,7 +7,9 @@ public class PropertyType
     public required string PrimaryType { get; init; }
     public string GenericType { get; init; } = "";
     public string PrimaryTypeMarker { get; init; } = "";
+    public bool PrimaryTypeNullable { get; init; }
     public string GenericTypeMarker { get; init; } = "";
+    public bool GenericTypeNullable { get; init; }
     public bool IsArray { get; init; }
     public string ArrayLength { get; init; } = "";
     public bool IsDeprec { get; init; }

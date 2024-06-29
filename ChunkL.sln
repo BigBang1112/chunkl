@@ -12,6 +12,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Položky řešení", "Polo�
 		.editorconfig = .editorconfig
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
+		LICENSE.txt = LICENSE.txt
+		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{B13D5DF4-C394-488D-A9B8-0667DF316A00}"
@@ -28,7 +30,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ChunkL.Json", "Src\ChunkL.Json\ChunkL.Json.csproj", "{7FF855A1-224A-4AA3-BF71-F45695B139F0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChunkL.Dynamic", "Src\ChunkL.Dynamic\ChunkL.Dynamic.csproj", "{25B2A7B1-1C56-4313-9A1B-599328A3009F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ChunkL.Dynamic", "Src\ChunkL.Dynamic\ChunkL.Dynamic.csproj", "{25B2A7B1-1C56-4313-9A1B-599328A3009F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
