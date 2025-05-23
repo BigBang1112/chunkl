@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/.github/" />
+  <Folder Name="/.github/workflows/">
+    <File Path=".github/workflows/dotnet.yml" />
+    <File Path=".github/workflows/publish.yml" />
+  </Folder>
+  <Folder Name="/Položky řešení/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="LICENSE.txt" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/Src/">
+    <Project Path="Src/ChunkL.Dynamic/ChunkL.Dynamic.csproj" />
+    <Project Path="Src/ChunkL.Json/ChunkL.Json.csproj" />
+    <Project Path="Src/ChunkL/ChunkL.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/ChunkL.Tests/ChunkL.Tests.csproj" />
+  </Folder>
+</Solution>

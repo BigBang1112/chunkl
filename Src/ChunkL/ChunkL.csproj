@@ -1,33 +1,43 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<Version>0.7.4</Version>
+		<Version>0.7.5</Version>
 	</PropertyGroup>
 
 	<PropertyGroup>
 		<Authors>Petr Pivoňka (BigBang1112)</Authors>
 		<Description>A library handling ChunkL - a standard for serialized objects represented in binary data chunks that are backwards compatible.</Description>
-		<Copyright>Copyright © Petr 'BigBang1112' Pivoňka</Copyright>
-	</PropertyGroup>
+		<Copyright>Copyright (c) 2024-2025 Petr Pivoňka</Copyright>
+        <PackageProjectUrl>https://github.com/BigBang1112/chunkl</PackageProjectUrl>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageTags>gbx, trackmania, maniaplanet, gamebox, net, chunk</PackageTags>
+        <PackageReleaseNotes></PackageReleaseNotes>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    </PropertyGroup>
 
-	<PropertyGroup>
-		<TargetFrameworks>net8.0;netstandard2.0</TargetFrameworks>
-		<LangVersion>12</LangVersion>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<IsTrimmable Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net6.0'))">true</IsTrimmable>
-		<IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))">true</IsAotCompatible>
+    <PropertyGroup>
+        <TargetFrameworks>net9.0;net8.0;netstandard2.0</TargetFrameworks>
+        <LangVersion>13</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsTrimmable Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net6.0'))">true</IsTrimmable>
+        <IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))">true</IsAotCompatible>
 
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageTags>gbx, trackmania, maniaplanet, gamebox, net, chunk</PackageTags>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
 
-		<RepositoryType>git</RepositoryType>
-		<RepositoryUrl>https://github.com/BigBang1112/chunkl</RepositoryUrl>
-		<PackageProjectUrl>https://github.com/BigBang1112/chunkl</PackageProjectUrl>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+        <NoWarn>1591</NoWarn>
 	</PropertyGroup>
-	
-	<PropertyGroup>
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-	</PropertyGroup>
+    
+    <ItemGroup>
+        <None Include="../../README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
 
 </Project>
