@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net8.0;net6.0</TargetFrameworks>
+		<TargetFrameworks>net9.0;net8.0;net6.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
@@ -27,10 +27,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Folder Include="Files\" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<None Update="Files\CGameCtnBlock.chunkl">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
@@ -40,6 +36,9 @@
 		<None Update="Files\CPlugVehicleCarPhyTuning.chunkl">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
+        <None Update="Files\CCtnMediaBlockEventTrackMania.chunkl">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
 	</ItemGroup>
 
 </Project>
