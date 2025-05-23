@@ -27,10 +27,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Folder Include="Files\" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<None Update="Files\CGameCtnBlock.chunkl">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
@@ -40,6 +36,9 @@
 		<None Update="Files\CPlugVehicleCarPhyTuning.chunkl">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
+        <None Update="Files\CCtnMediaBlockEventTrackMania.chunkl">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
 	</ItemGroup>
 
 </Project>

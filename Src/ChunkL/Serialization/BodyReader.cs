@@ -13,7 +13,7 @@ internal sealed partial class BodyReader(TextReader reader)
     public const string ChunkDefinitionRegexPattern = @"^(?:(?:0x)?([0-9a-fA-F]{3}|[0-9a-fA-F]{8}))(?:\s+\((.+?)\))?(?:\s+\[(.+?)\])?\s*(?:\/\/\s*(.*))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string ChunkMemberRegexPattern = @"^(\s+)(.+?)(\?)?(?:\s+(\w+|"".+""))?(?:\s*=\s*([\w\-.? ,()]+))?(?:\s+\((.+?)\))?\s*(?:\/\/\s*(.*))?$";
+    public const string ChunkMemberRegexPattern = @"^(\s+)(.+?)(\?)?(?:\s+(\w+|"".+""))?(?:\s*=\s*([\w\-.?,()]+[\w\-.?, ()]*))?(?:\s+\((.+?)\))?\s*(?:\/\/\s*(.*))?$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string MemberVersionRegexPattern = @"^v([0-9]+)([+-=])$";

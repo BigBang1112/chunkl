@@ -6,6 +6,7 @@ public class ChunkLSerializerTests
     [InlineData("CGameCtnChallenge")]
     [InlineData("CGameCtnBlock")]
     [InlineData("CPlugVehicleCarPhyTuning")]
+    [InlineData("CCtnMediaBlockEventTrackMania")]
     public void Deserialize(string className)
     {
         var reader = new StreamReader($"Files/{className}.chunkl");
