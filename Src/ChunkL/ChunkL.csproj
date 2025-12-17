@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<Version>0.7.5</Version>
+		<Version>0.7.6</Version>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -16,7 +16,7 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <TargetFrameworks>net9.0;net8.0;netstandard2.0</TargetFrameworks>
+        <TargetFrameworks>net10.0;net9.0;net8.0;netstandard2.0</TargetFrameworks>
         <LangVersion>13</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>

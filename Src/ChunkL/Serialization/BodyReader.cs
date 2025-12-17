@@ -19,7 +19,7 @@ internal sealed partial class BodyReader(TextReader reader)
     public const string MemberVersionRegexPattern = @"^v([0-9]+)([+-=])$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string MemberEnumRegexPattern = @"^(int|byte)<([\w.]+)>$";
+    public const string MemberEnumRegexPattern = @"^(int|short|byte)<([\w.]+)>$";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string MemberIfRegexPattern = @"^if\s+(.*?)(?:\/\/)?\s*(?:\/\/\s*(.*))?$";
