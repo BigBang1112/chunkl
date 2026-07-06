@@ -1,0 +1,4 @@
+CGameMinimal 0x03000000
+
+0x001
+  int Value

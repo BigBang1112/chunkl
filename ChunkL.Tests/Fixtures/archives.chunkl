@@ -1,0 +1,32 @@
+CPlugCrystal 0x09003000
+- inherits: CPlugTreeGenerator
+
+archive Material
+  string MaterialName
+  if MaterialName == null || MaterialName == ""
+    CPlugMaterialUserInst MaterialUserInst
+
+archive Layer (contextual)
+  int Ver
+  bool CrystalEnabled
+  id LayerId
+  string LayerName
+  if Ver >= 1
+    bool IsEnabled = true
+
+archive GeometryLayer (inherits: Layer, contextual)
+  base
+  int GeometryVersion
+  Crystal Crystal
+  int[] U02
+  if GeometryVersion >= 1
+    bool IsVisible = true
+    bool Collidable = true
+
+archive Key (inherits: IKey)
+  timefloat Time
+  vec2 Position
+  float Rotation
+  vec2 Scale
+  v1+
+    float Opacity = 1

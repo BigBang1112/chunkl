@@ -1,0 +1,469 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "ChunkL",
+  "scopeName": "source.chunkl",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#class-header" },
+    { "include": "#class-attribute" },
+    { "include": "#chunk-header" },
+    { "include": "#archive-declaration" },
+    { "include": "#enum-declaration" },
+    { "include": "#flags-declaration" },
+    { "include": "#flags-member" },
+    { "include": "#version-condition" },
+    { "include": "#control-flow" },
+    { "include": "#field-declaration" },
+    { "include": "#enum-member" },
+    { "include": "#computed-assignment" },
+    { "include": "#attribute-list" },
+    { "include": "#expression" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.chunkl",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.line.number-sign.chunkl",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "class-header": {
+      "match": "^([A-Z]\\w*)\\s+(0x[0-9a-fA-F]+)",
+      "captures": {
+        "1": { "name": "entity.name.class.chunkl" },
+        "2": { "name": "constant.numeric.hex.chunkl" }
+      }
+    },
+    "class-attribute": {
+      "match": "^(-)\\s+(\\w[\\w\\s]*)(?::\\s*(.+?))?\\s*(?=//|#|$)",
+      "captures": {
+        "1": { "name": "punctuation.definition.attribute.chunkl" },
+        "2": { "name": "entity.other.attribute-name.chunkl" },
+        "3": { "name": "string.unquoted.attribute-value.chunkl" }
+      }
+    },
+    "chunk-header": {
+      "begin": "^(0x[0-9a-fA-F]+)",
+      "end": "$",
+      "beginCaptures": {
+        "1": { "name": "constant.numeric.hex.chunk-id.chunkl" }
+      },
+      "patterns": [
+        { "include": "#attribute-list" },
+        { "include": "#version-list" },
+        { "include": "#comments" }
+      ]
+    },
+    "archive-declaration": {
+      "match": "^(archive)(?:\\s+([A-Z]\\w*))?",
+      "captures": {
+        "1": { "name": "keyword.declaration.archive.chunkl" },
+        "2": { "name": "entity.name.type.archive.chunkl" }
+      }
+    },
+    "enum-declaration": {
+      "match": "^(enum)\\s+([A-Z]\\w*)",
+      "captures": {
+        "1": { "name": "keyword.declaration.enum.chunkl" },
+        "2": { "name": "entity.name.type.enum.chunkl" }
+      }
+    },
+    "flags-declaration": {
+      "match": "^(flags)\\s+([A-Z]\\w*)",
+      "captures": {
+        "1": { "name": "keyword.declaration.flags.chunkl" },
+        "2": { "name": "entity.name.type.flags.chunkl" }
+      }
+    },
+    "flags-member": {
+      "match": "^\\s+(\\w+)\\[(\\d+)(?:\\.\\.(\\d+))?\\]\\s*(?=//|#|$)",
+      "captures": {
+        "1": { "name": "variable.other.member.flags.chunkl" },
+        "2": { "name": "constant.numeric.integer.bit-position.chunkl" },
+        "3": { "name": "constant.numeric.integer.bit-position.chunkl" }
+      }
+    },
+    "version-condition": {
+      "match": "^(\\s+)(v)(\\d+)(?:(\\.\\.)(\\d+)|([+\\-=]))",
+      "captures": {
+        "2": { "name": "keyword.control.version.chunkl" },
+        "3": { "name": "constant.numeric.integer.version.chunkl" },
+        "4": { "name": "keyword.operator.range.chunkl" },
+        "5": { "name": "constant.numeric.integer.version.chunkl" },
+        "6": { "name": "keyword.operator.version.chunkl" }
+      }
+    },
+    "control-flow": {
+      "patterns": [
+        {
+          "match": "(?<=\\s)(if)\\b(.+?)(?=\\s*(?://|#|$))",
+          "captures": {
+            "1": { "name": "keyword.control.if.chunkl" },
+            "2": {
+              "patterns": [
+                { "include": "#expression" }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?<=\\s)(else\\s+if)\\b(.+?)(?=\\s*(?://|#|$))",
+          "captures": {
+            "1": { "name": "keyword.control.else-if.chunkl" },
+            "2": {
+              "patterns": [
+                { "include": "#expression" }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?<=\\s)(else)\\b",
+          "captures": {
+            "1": { "name": "keyword.control.else.chunkl" }
+          }
+        },
+        {
+          "match": "(?<=\\s)(return)\\b",
+          "captures": {
+            "1": { "name": "keyword.control.return.chunkl" }
+          }
+        },
+        {
+          "match": "(?<=\\s)(throw)\\b",
+          "captures": {
+            "1": { "name": "keyword.control.throw.chunkl" }
+          }
+        },
+        {
+          "match": "(?<=\\s)(block)\\b",
+          "captures": {
+            "1": { "name": "keyword.control.block.chunkl" }
+          }
+        },
+        {
+          "match": "(?<=\\s)(switch)\\b(.+?)(?=\\s*(?://|#|$))",
+          "captures": {
+            "1": { "name": "keyword.control.switch.chunkl" },
+            "2": {
+              "patterns": [
+                { "include": "#expression" }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?<=\\s)(case)\\b(.+?)(?=\\s*(?://|#|$))",
+          "captures": {
+            "1": { "name": "keyword.control.case.chunkl" },
+            "2": {
+              "patterns": [
+                { "include": "#expression" }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?<=\\s)(default)\\b",
+          "captures": {
+            "1": { "name": "keyword.control.default.chunkl" }
+          }
+        },
+        {
+          "match": "(?<=\\s)(loop)\\b\\s*(\\w+)?",
+          "captures": {
+            "1": { "name": "keyword.control.loop.chunkl" },
+            "2": {
+              "patterns": [
+                {
+                  "match": "\\d+",
+                  "name": "constant.numeric.integer.chunkl"
+                },
+                {
+                  "match": "\\w+",
+                  "name": "variable.other.chunkl"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?<=\\s)(skip)\\b\\s*(.+?)(?=\\s*(?://|#|\\([a-z]|$))",
+          "captures": {
+            "1": { "name": "keyword.control.skip.chunkl" },
+            "2": {
+              "patterns": [
+                { "include": "#expression" }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?<=\\s)(assert)\\b\\s*(.+?)(?=\\s*(?://|#|\\([a-z]|$))",
+          "captures": {
+            "1": { "name": "keyword.control.assert.chunkl" },
+            "2": {
+              "patterns": [
+                { "include": "#expression" }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?<=\\s)(version)\\b(?:\\s*(=)\\s*(-?\\d+))?",
+          "captures": {
+            "1": { "name": "keyword.other.version.chunkl" },
+            "2": { "name": "keyword.operator.assignment.chunkl" },
+            "3": { "name": "constant.numeric.integer.chunkl" }
+          }
+        },
+        {
+          "match": "(?<=\\s)(versionb)\\b(?:\\s*(=)\\s*(-?\\d+))?",
+          "captures": {
+            "1": { "name": "keyword.other.versionb.chunkl" },
+            "2": { "name": "keyword.operator.assignment.chunkl" },
+            "3": { "name": "constant.numeric.integer.chunkl" }
+          }
+        },
+        {
+          "match": "(?<=\\s)(base)\\b",
+          "captures": {
+            "1": { "name": "keyword.other.base.chunkl" }
+          }
+        }
+      ]
+    },
+    "field-declaration": {
+      "patterns": [
+        { "include": "#field-primitive-with-cast" },
+        { "include": "#field-class-with-cast" },
+        { "include": "#field-primitive" },
+        { "include": "#field-class" }
+      ]
+    },
+    "field-primitive-with-cast": {
+      "begin": "(?<=\\s)([a-z_]\\w*)(<)",
+      "end": "(?=\\s*(?://|#|$))",
+      "beginCaptures": {
+        "1": { "name": "variable.other.field.chunkl" },
+        "2": { "name": "punctuation.definition.typeparameters.begin.chunkl" }
+      },
+      "patterns": [
+        {
+          "match": "([A-Za-z][\\w.]*)(>)([?])?((?:\\[(?:\\w+)?\\])*)",
+          "captures": {
+            "1": { "name": "entity.name.type.cast.chunkl" },
+            "2": { "name": "punctuation.definition.typeparameters.end.chunkl" },
+            "3": { "name": "storage.modifier.nullable.chunkl" },
+            "4": { "name": "storage.modifier.array.chunkl" }
+          }
+        },
+        {
+          "match": "\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "storage.type.primitive.chunkl" }
+          }
+        },
+        {
+          "match": "(=)\\s*(.+?)(?=\\s*(?://|#|\\(|$))",
+          "captures": {
+            "1": { "name": "keyword.operator.assignment.chunkl" },
+            "2": {
+              "patterns": [
+                { "include": "#expression" }
+              ]
+            }
+          }
+        },
+        { "include": "#attribute-list" }
+      ]
+    },
+    "field-class-with-cast": {
+      "begin": "(?<=\\s)([A-Z][A-Za-z0-9_]*)(<)",
+      "end": "(?=\\s*(?://|#|$))",
+      "beginCaptures": {
+        "1": { "name": "variable.other.field.chunkl" },
+        "2": { "name": "punctuation.definition.typeparameters.begin.chunkl" }
+      },
+      "patterns": [
+        {
+          "match": "([A-Za-z][\\w.]*)(>)([*])?([?])?((?:\\[(?:\\w+)?\\])*)",
+          "captures": {
+            "1": { "name": "entity.name.type.cast.chunkl" },
+            "2": { "name": "punctuation.definition.typeparameters.end.chunkl" },
+            "3": { "name": "storage.modifier.chunk-preference.chunkl" },
+            "4": { "name": "storage.modifier.nullable.chunkl" },
+            "5": { "name": "storage.modifier.array.chunkl" }
+          }
+        },
+        {
+          "match": "\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "support.class.chunkl" }
+          }
+        },
+        {
+          "match": "(=)\\s*(.+?)(?=\\s*(?://|#|\\(|$))",
+          "captures": {
+            "1": { "name": "keyword.operator.assignment.chunkl" },
+            "2": {
+              "patterns": [
+                { "include": "#expression" }
+              ]
+            }
+          }
+        },
+        { "include": "#attribute-list" }
+      ]
+    },
+    "field-primitive": {
+      "match": "(?<=\\s)([a-z_]\\w*)([?])?((?:\\[(?:\\w+)?\\])*)(?:\\s+([A-Za-z_]\\w*))?(?:\\s*(=)\\s*(.+?))?(?=\\s*(?://|#|\\(|$))",
+      "captures": {
+        "1": { "name": "variable.other.field.chunkl" },
+        "2": { "name": "storage.modifier.nullable.chunkl" },
+        "3": { "name": "storage.modifier.array.chunkl" },
+        "4": { "name": "storage.type.primitive.chunkl" },
+        "5": { "name": "keyword.operator.assignment.chunkl" },
+        "6": {
+          "patterns": [
+            { "include": "#expression" }
+          ]
+        }
+      }
+    },
+    "field-class": {
+      "match": "(?<=\\s)([A-Z][A-Za-z0-9_]*)([*])?([?])?((?:\\[(?:\\w+)?\\])*)(?:\\s+([A-Za-z_]\\w*))?(?:\\s*(=)\\s*(.+?))?(?=\\s*(?://|#|\\(|$))",
+      "captures": {
+        "1": { "name": "variable.other.field.chunkl" },
+        "2": { "name": "storage.modifier.chunk-preference.chunkl" },
+        "3": { "name": "storage.modifier.nullable.chunkl" },
+        "4": { "name": "storage.modifier.array.chunkl" },
+        "5": { "name": "support.class.chunkl" },
+        "6": { "name": "keyword.operator.assignment.chunkl" },
+        "7": {
+          "patterns": [
+            { "include": "#expression" }
+          ]
+        }
+      }
+    },
+    "computed-assignment": {
+      "match": "^(\\s+)([A-Za-z_]\\w*)\\s*(=)\\s*(.+?)(?=\\s*(?://|#|$))",
+      "captures": {
+        "2": { "name": "variable.other.field.chunkl" },
+        "3": { "name": "keyword.operator.assignment.chunkl" },
+        "4": {
+          "patterns": [
+            { "include": "#expression" }
+          ]
+        }
+      }
+    },
+    "enum-member": {
+      "match": "^(\\s+)(\\w+)(?:\\s*(=)\\s*(\\d+))?",
+      "captures": {
+        "2": { "name": "variable.other.enummember.chunkl" },
+        "3": { "name": "keyword.operator.assignment.chunkl" },
+        "4": { "name": "constant.numeric.integer.chunkl" }
+      }
+    },
+    "attribute-list": {
+      "begin": "(\\()",
+      "end": "(\\))",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.attributes.begin.chunkl" }
+      },
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.attributes.end.chunkl" }
+      },
+      "patterns": [
+        {
+          "match": "(,)",
+          "name": "punctuation.separator.comma.chunkl"
+        },
+        {
+          "match": "([\\w][\\w\\s]*)(:)\\s*([^,)]+)",
+          "captures": {
+            "1": { "name": "entity.other.attribute-name.chunkl" },
+            "2": { "name": "punctuation.separator.key-value.chunkl" },
+            "3": { "name": "string.unquoted.attribute-value.chunkl" }
+          }
+        },
+        {
+          "match": "[\\w][\\w\\s]*",
+          "name": "entity.other.attribute-name.flag.chunkl"
+        }
+      ]
+    },
+    "expression": {
+      "patterns": [
+        {
+          "match": "0x[0-9a-fA-F]+",
+          "name": "constant.numeric.hex.chunkl"
+        },
+        {
+          "match": "\\d+\\.\\d+f?",
+          "name": "constant.numeric.float.chunkl"
+        },
+        {
+          "match": "\\b\\d+\\b",
+          "name": "constant.numeric.integer.chunkl"
+        },
+        {
+          "match": "\\b(true|false)\\b",
+          "name": "constant.language.boolean.chunkl"
+        },
+        {
+          "match": "\\b(null|empty)\\b",
+          "name": "constant.language.null.chunkl"
+        },
+        {
+          "match": "(\\w+)(::)(\\w+)",
+          "captures": {
+            "1": { "name": "entity.name.type.namespace.chunkl" },
+            "2": { "name": "punctuation.accessor.scope-resolution.chunkl" },
+            "3": { "name": "variable.other.enummember.chunkl" }
+          }
+        },
+        {
+          "match": "(==|!=|>=|<=|&&|\\|\\||<<|>>|[+\\-*/%&|^~!<>])",
+          "name": "keyword.operator.chunkl"
+        },
+        {
+          "match": "\"[^\"]*\"",
+          "name": "string.quoted.double.chunkl"
+        }
+      ]
+    },
+    "version-list": {
+      "begin": "(\\[)",
+      "end": "(\\])",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.version-list.begin.chunkl" }
+      },
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.version-list.end.chunkl" }
+      },
+      "patterns": [
+        {
+          "match": "(,)",
+          "name": "punctuation.separator.comma.chunkl"
+        },
+        {
+          "match": "([A-Za-z][\\w]*)(?:(\\.)(v)(\\d+))?",
+          "captures": {
+            "1": { "name": "constant.other.version-tag.chunkl" },
+            "2": { "name": "punctuation.separator.dot.chunkl" },
+            "3": { "name": "keyword.control.version.chunkl" },
+            "4": { "name": "constant.numeric.integer.version.chunkl" }
+          }
+        }
+      ]
+    }
+  }
+}
