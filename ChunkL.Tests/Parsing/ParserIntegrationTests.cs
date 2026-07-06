@@ -502,6 +502,149 @@ public class ParserIntegrationTests
     }
 
     [Fact]
+    public void Parse_ChunkAttributes_File()
+    {
+        var result = ChunkLParser.ParseFile(FixturePath("chunk_attributes.chunkl"));
+
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
+        var file = result.File!;
+
+        Assert.Equal("CGameCtnChallenge", file.Header.ClassName);
+        Assert.Equal(2, file.ClassAttributes.Count);
+        Assert.Equal("inherits", file.ClassAttributes[0].Name);
+        Assert.Equal("CGameCtnCollector", file.ClassAttributes[0].Value);
+        Assert.Equal("abstract", file.ClassAttributes[1].Name);
+
+        Assert.Equal(8, file.Chunks.Count);
+
+        // header + struct chunk with .vN version qualifiers
+        var headerChunk = file.Chunks[0];
+        Assert.Equal("0x00D", headerChunk.Offset.HexValue);
+        Assert.NotNull(headerChunk.Attributes);
+        Assert.Contains(headerChunk.Attributes!.Entries, e => e.Name == "header");
+        Assert.Contains(headerChunk.Attributes.Entries, e => e.Name == "struct" && e.Value == "SHeaderCommon");
+        Assert.Equal(5, headerChunk.VersionQualifiers.Count);
+        Assert.Equal("TM10", headerChunk.VersionQualifiers[0].Label);
+        Assert.Equal(0, headerChunk.VersionQualifiers[0].MaxVersion);
+        Assert.Equal("TM2020", headerChunk.VersionQualifiers[4].Label);
+        Assert.Equal(11, headerChunk.VersionQualifiers[4].MaxVersion);
+
+        // base: reference chunk
+        var baseChunk = file.Chunks.Single(c => c.Offset.HexValue == "0x028");
+        Assert.NotNull(baseChunk.Attributes);
+        Assert.Contains(baseChunk.Attributes!.Entries, e => e.Name == "base" && e.Value == "0x027");
+        var baseField = Assert.IsType<FieldDeclaration>(baseChunk.Body[0]);
+        Assert.True(baseField.IsSpecialKeyword);
+        Assert.Equal("base", baseField.Type.Name);
+
+        // skippable + ignore, empty body
+        var ignoredChunk = file.Chunks.Single(c => c.Offset.HexValue == "0x038");
+        Assert.Contains(ignoredChunk.Attributes!.Entries, e => e.Name == "skippable");
+        Assert.Contains(ignoredChunk.Attributes.Entries, e => e.Name == "ignore");
+        Assert.Empty(ignoredChunk.Body);
+
+        // demonstration flag
+        var demoChunk = file.Chunks.Single(c => c.Offset.HexValue == "0x015");
+        Assert.Contains(demoChunk.Attributes!.Entries, e => e.Name == "demonstration");
+
+        // full 8-digit chunk id with base attribute
+        var fullIdChunk = file.Chunks.Last();
+        Assert.Equal("0x11001000", fullIdChunk.Offset.HexValue);
+        Assert.True(fullIdChunk.Offset.IsFullId);
+        Assert.Contains(fullIdChunk.Attributes!.Entries, e => e.Name == "base" && e.Value == "0x000");
+    }
+
+    [Fact]
+    public void Parse_ControlFlowAdvanced_File()
+    {
+        var result = ChunkLParser.ParseFile(FixturePath("control_flow_advanced.chunkl"));
+
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
+        var file = result.File!;
+
+        Assert.Equal(5, file.Chunks.Count);
+
+        // block statements
+        var blockChunk = file.Chunks[0];
+        Assert.Equal(3, blockChunk.Body.Count);
+        var block1 = Assert.IsType<BlockStatement>(blockChunk.Body[0]);
+        Assert.Equal("name", block1.Attributes!.Entries[0].Name);
+        Assert.Equal("Collision", block1.Attributes.Entries[0].Value);
+        Assert.Equal(2, block1.Body.Count);
+        var block2 = Assert.IsType<BlockStatement>(blockChunk.Body[1]);
+        Assert.Equal(2, block2.Attributes!.Entries.Count);
+        var block3 = Assert.IsType<BlockStatement>(blockChunk.Body[2]);
+        Assert.Null(block3.Attributes);
+
+        // skip + assert
+        var skipAssertChunk = file.Chunks[1];
+        var skip1 = Assert.IsType<SkipStatement>(skipAssertChunk.Body[0]);
+        Assert.Equal("8", skip1.Expression);
+        var skip2 = Assert.IsType<SkipStatement>(skipAssertChunk.Body[2]);
+        Assert.Equal("Count", skip2.Expression);
+        var assert1 = Assert.IsType<AssertStatement>(skipAssertChunk.Body[3]);
+        Assert.Contains("Version <= 5", assert1.Condition);
+        var assert2 = Assert.IsType<AssertStatement>(skipAssertChunk.Body[4]);
+        Assert.NotNull(assert2.Attributes);
+
+        // return inside version block
+        var returnChunk = file.Chunks[2];
+        var versionBlock = Assert.IsType<VersionCondition>(returnChunk.Body[0]);
+        Assert.IsType<ReturnStatement>(versionBlock.Body[1]);
+
+        // throw statements
+        var throwChunk = file.Chunks[3];
+        Assert.IsType<ThrowStatement>(throwChunk.Body[0]);
+        var throwWithAttr = Assert.IsType<ThrowStatement>(throwChunk.Body[1]);
+        Assert.NotNull(throwWithAttr.Attributes);
+
+        // computed assignments
+        var computedChunk = file.Chunks[4];
+        var computed1 = Assert.IsType<ComputedAssignment>(computedChunk.Body[1]);
+        Assert.Equal("Flags", computed1.TargetName);
+        Assert.Contains("Flags & 0x1FFFF", computed1.Expression);
+        var computed2 = Assert.IsType<ComputedAssignment>(computedChunk.Body[2]);
+        Assert.Contains("Flags | 0x2000", computed2.Expression);
+    }
+
+    [Fact]
+    public void Parse_TypeModifiers_File()
+    {
+        var result = ChunkLParser.ParseFile(FixturePath("type_modifiers.chunkl"));
+
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
+        var body = result.File!.Chunks[0].Body;
+
+        var fields = body.OfType<FieldDeclaration>().ToList();
+
+        var surfacePhysicId = fields.Single(f => f.Name == "SurfacePhysicId");
+        Assert.NotNull(surfacePhysicId.Type.CastTarget);
+        Assert.Equal("CPlugSurface", surfacePhysicId.Type.CastTarget!.QualifyingType);
+        Assert.Equal("MaterialId", surfacePhysicId.Type.CastTarget.Name);
+
+        var respawns = fields.Single(f => f.Name == "Respawns");
+        Assert.True(respawns.Type.IsNullable);
+
+        var remapping = fields.Single(f => f.Name == "Remapping");
+        Assert.NotNull(remapping.Attributes);
+        Assert.Contains(remapping.Attributes!.Entries, e => e.Name == "external");
+
+        var optionalCounted = fields.Single(f => f.Name == "OptionalCounted");
+        Assert.True(optionalCounted.Type.IsNullable);
+        Assert.Equal("Count", optionalCounted.Type.FixedArrayCount);
+
+        // anonymous numeric assertion: `version = 2`
+        var versionAssert = fields.Single(f => f.Type.Name == "version");
+        Assert.Equal("2", versionAssert.DefaultValue);
+        Assert.True(versionAssert.IsSpecialKeyword);
+
+        // trailing anonymous, unnamed field `float`
+        var lastField = fields.Last();
+        Assert.Null(lastField.Name);
+        Assert.Equal("float", lastField.Type.Name);
+    }
+
+    [Fact]
     public void Parse_DefaultValueWithFieldName()
     {
         var source = """

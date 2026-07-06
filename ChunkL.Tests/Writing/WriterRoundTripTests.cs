@@ -61,6 +61,27 @@ public class WriterRoundTripTests
     }
 
     [Fact]
+    public void RoundTrip_ChunkAttributes()
+    {
+        var source = File.ReadAllText(FixturePath("chunk_attributes.chunkl"));
+        AssertRoundTrip(source);
+    }
+
+    [Fact]
+    public void RoundTrip_ControlFlowAdvanced()
+    {
+        var source = File.ReadAllText(FixturePath("control_flow_advanced.chunkl"));
+        AssertRoundTrip(source);
+    }
+
+    [Fact]
+    public void RoundTrip_TypeModifiers()
+    {
+        var source = File.ReadAllText(FixturePath("type_modifiers.chunkl"));
+        AssertRoundTrip(source);
+    }
+
+    [Fact]
     public void RoundTrip_InlineSource_Simple()
     {
         var source = """

@@ -1,0 +1,28 @@
+CGameCtnChallenge 0x03043000
+- inherits: CGameCtnCollector
+- abstract
+
+0x00D (header, struct: SHeaderCommon) [TM10.v0, TMPU.v1, TMF.v5, MP3.v11, TM2020.v11] // common
+  version
+  string MapName
+
+0x01F (skippable) [TMF, MP3, TMT, MP4, TM2020] // password
+  string Password
+
+0x027 (skippable) [TMU, TMF, MP3, TMT, MP4, TM2020] // old realtime thumbnail + comments
+  string Comments
+
+0x028 (base: 0x027) [TMU, TMF, MP3, TMT, MP4, TM2020] // old realtime thumbnail + comments
+  base
+  string ExtraComments
+
+0x038 (skippable, ignore) [MP3, TMT, MP4, TM2020]
+
+0x03A (skippable, ignore) [TM2020]
+
+0x015 (demonstration) [TM10] // flags+location, TM1.0
+  int Flags
+
+0x11001000 (base: 0x000)
+  base
+  int ExtraField
