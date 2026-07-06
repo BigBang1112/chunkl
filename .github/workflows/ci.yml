@@ -1,0 +1,16 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  ci:
+    uses: BigBang1112/workflows/.github/workflows/ci.yml@main
+    with:
+      dotnet-version: |
+        10.0.x
+        9.0.x
+        8.0.x
