@@ -1,0 +1,29 @@
+CGameCtnBlockUnitInfo 0x0304F000
+
+0x001 [TM2020]
+  int? Respawns
+  timeint? RaceTime
+  bool? CarCanBeDirty
+  iso4? SpawnLocGround
+  CPlugGameSkin? Remapping (external)
+  CGameCtnBlock* PlacedBlock
+  CGameCtnBlock*? OptionalBlock
+  float[] Xs
+  vec3[] Checkpoints
+  int3[] Coords
+  int[][] NestedData
+  CMwNod?[] NadeoSkinFids (external)
+  float[4] Quaternion
+  byte[16] Guid
+  int[3] Rgb
+  vec3[8] BoundingCorners
+  int Count
+  vec3[Count] Points
+  int?[4] OptionalValues
+  int?[Count] OptionalCounted
+  byte<Direction> Dir
+  int<PlayMode> Mode
+  byte<CPlugSurface.MaterialId> SurfacePhysicId
+  version = 2
+  int UnnamedButTyped
+  float

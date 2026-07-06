@@ -1,0 +1,36 @@
+CGameCtnBlockInfo 0x0304E000
+
+0x018 [TM2020] // block variants
+  block (name: Collision)
+    vec3 Position
+    float Radius
+
+  block (name: Visual, optional)
+    CPlugBitmap Texture
+    vec4 Color
+
+  block
+    int TestField
+    float TestField2
+
+0x019 [TM2020]
+  skip 8
+  int Count
+  skip Count // skip based on previously read field
+  assert Version <= 5
+  assert Signature == 0xDEADBEEF (type: CorruptedDataException)
+
+0x01A [TM2020]
+  v5+
+    CGameCtnBlockUnitInfo[] Unit
+    return
+  vec3[]
+
+0x01B [TM2020]
+  throw
+  throw (type: NotSupportedException)
+
+0x01C [TM2020]
+  int Flags
+  Flags = Flags & 0x1FFFF
+  Flags = Flags | 0x2000

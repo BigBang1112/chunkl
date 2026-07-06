@@ -1,0 +1,31 @@
+CGameCtnMediaClip 0x03079000
+
+0x00D [MP4.v0, TM2020.v1] // MP tracks
+  version
+  CGameCtnMediaTrack[] Tracks (deprec)
+  string Name
+  bool StopWhenLeave
+  bool
+  bool StopWhenRespawn
+  string
+  float
+  int LocalPlayerClipEntIndex = -1
+
+0x00E (skippable) [TM2020]
+  version
+  int
+
+0x010 [TM2020]
+  version
+  if Version >= 1
+    int AuthorVersion
+  loop 4
+    float Value
+  switch Version
+    case 0
+      string LegacyName
+    case 1
+      id Name
+      int Flags
+    default
+      int UnknownData
