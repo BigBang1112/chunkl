@@ -13,7 +13,7 @@ public static class ChunkLParser
     /// <summary>
     /// Parse a ChunkL source string into an AST.
     /// </summary>
-    public static ParseResult Parse(string source)
+    public static ParseResult ParseSource(string source)
     {
         var diagnostics = new DiagnosticBag();
 
@@ -35,10 +35,20 @@ public static class ChunkLParser
     /// <summary>
     /// Parse a .chunkl file from disk.
     /// </summary>
-    public static ParseResult ParseFile(string filePath)
+    public static ParseResult Parse(string filePath)
     {
         var source = File.ReadAllText(filePath);
-        return Parse(source);
+        return ParseSource(source);
+    }
+
+    /// <summary>
+    /// Parse ChunkL source from a stream.
+    /// </summary>
+    public static ParseResult Parse(Stream stream)
+    {
+        using var reader = new StreamReader(stream);
+        var source = reader.ReadToEnd();
+        return ParseSource(source);
     }
 
     /// <summary>

@@ -9,14 +9,14 @@ public class WriterRoundTripTests
 
     private static void AssertRoundTrip(string source)
     {
-        var result = ChunkLParser.Parse(source);
+        var result = ChunkLParser.ParseSource(source);
         Assert.True(result.Success,
             $"Parse failed: {string.Join("; ", result.Diagnostics.Select(d => d.ToString()))}");
 
         var written = ChunkLParser.Write(result.File!);
 
         // Re-parse the written output to verify it produces an equivalent AST
-        var result2 = ChunkLParser.Parse(written);
+        var result2 = ChunkLParser.ParseSource(written);
         Assert.True(result2.Success,
             $"Re-parse failed: {string.Join("; ", result2.Diagnostics.Select(d => d.ToString()))}");
 
@@ -216,7 +216,7 @@ public class WriterRoundTripTests
     public void Write_PreservesCommentStyle()
     {
         var source = "TestClass 0x01000000 // a class\n";
-        var result = ChunkLParser.Parse(source);
+        var result = ChunkLParser.ParseSource(source);
         var written = ChunkLParser.Write(result.File!);
         Assert.Contains("// a class", written);
     }
@@ -239,7 +239,7 @@ public class WriterRoundTripTests
               West
             """;
 
-        var result = ChunkLParser.Parse(source);
+        var result = ChunkLParser.ParseSource(source);
         Assert.True(result.Success);
 
         var written = ChunkLParser.Write(result.File!);

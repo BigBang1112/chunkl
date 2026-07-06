@@ -11,7 +11,7 @@ public class ParserIntegrationTests
     [Fact]
     public void Parse_Minimal_File()
     {
-        var result = ChunkLParser.ParseFile(FixturePath("minimal.chunkl"));
+        var result = ChunkLParser.Parse(FixturePath("minimal.chunkl"));
 
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
         Assert.NotNull(result.File);
@@ -27,9 +27,21 @@ public class ParserIntegrationTests
     }
 
     [Fact]
+    public void Parse_Minimal_Stream()
+    {
+        using var stream = File.OpenRead(FixturePath("minimal.chunkl"));
+        var result = ChunkLParser.Parse(stream);
+
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
+        Assert.NotNull(result.File);
+        Assert.Equal("CGameMinimal", result.File!.Header.ClassName);
+        Assert.Equal("0x03000000", result.File.Header.ClassId);
+    }
+
+    [Fact]
     public void Parse_FullExample_File()
     {
-        var result = ChunkLParser.ParseFile(FixturePath("full_example.chunkl"));
+        var result = ChunkLParser.Parse(FixturePath("full_example.chunkl"));
 
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
         var file = result.File!;
@@ -80,7 +92,7 @@ public class ParserIntegrationTests
     [Fact]
     public void Parse_ControlFlow_File()
     {
-        var result = ChunkLParser.ParseFile(FixturePath("control_flow.chunkl"));
+        var result = ChunkLParser.Parse(FixturePath("control_flow.chunkl"));
 
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
         var file = result.File!;
@@ -142,7 +154,7 @@ public class ParserIntegrationTests
     [Fact]
     public void Parse_EnumsFlags_File()
     {
-        var result = ChunkLParser.ParseFile(FixturePath("enums_flags.chunkl"));
+        var result = ChunkLParser.Parse(FixturePath("enums_flags.chunkl"));
 
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
         var file = result.File!;
@@ -182,7 +194,7 @@ public class ParserIntegrationTests
     [Fact]
     public void Parse_Archives_File()
     {
-        var result = ChunkLParser.ParseFile(FixturePath("archives.chunkl"));
+        var result = ChunkLParser.Parse(FixturePath("archives.chunkl"));
 
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
         var file = result.File!;
@@ -240,7 +252,7 @@ public class ParserIntegrationTests
                 bool HasData
             """;
 
-        var result = ChunkLParser.Parse(source);
+        var result = ChunkLParser.ParseSource(source);
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
 
         var body = result.File!.Chunks[0].Body;
@@ -280,7 +292,7 @@ public class ParserIntegrationTests
                 int UnknownData
             """;
 
-        var result = ChunkLParser.Parse(source);
+        var result = ChunkLParser.ParseSource(source);
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
 
         var ifStmt = Assert.IsType<IfStatement>(result.File!.Chunks[0].Body[0]);
@@ -307,7 +319,7 @@ public class ParserIntegrationTests
               CMwNod?[] NadeoSkinFids (external)
             """;
 
-        var result = ChunkLParser.Parse(source);
+        var result = ChunkLParser.ParseSource(source);
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
 
         var body = result.File!.Chunks[0].Body;
@@ -352,7 +364,7 @@ public class ParserIntegrationTests
               Flags = Flags & 0x1FFFF
             """;
 
-        var result = ChunkLParser.Parse(source);
+        var result = ChunkLParser.ParseSource(source);
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
 
         var body = result.File!.Chunks[0].Body;
@@ -373,7 +385,7 @@ public class ParserIntegrationTests
               throw
             """;
 
-        var result = ChunkLParser.Parse(source);
+        var result = ChunkLParser.ParseSource(source);
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
 
         var body = result.File!.Chunks[0].Body;
@@ -397,7 +409,7 @@ public class ParserIntegrationTests
               assert Signature == 0xDEADBEEF (type: CorruptedDataException)
             """;
 
-        var result = ChunkLParser.Parse(source);
+        var result = ChunkLParser.ParseSource(source);
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
 
         var body = result.File!.Chunks[0].Body;
@@ -424,7 +436,7 @@ public class ParserIntegrationTests
                 float Radius
             """;
 
-        var result = ChunkLParser.Parse(source);
+        var result = ChunkLParser.ParseSource(source);
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
 
         var block = Assert.IsType<BlockStatement>(result.File!.Chunks[0].Body[0]);
@@ -444,7 +456,7 @@ public class ParserIntegrationTests
               byte<CPlugSurface.MaterialId> SurfacePhysicId
             """;
 
-        var result = ChunkLParser.Parse(source);
+        var result = ChunkLParser.ParseSource(source);
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
 
         var field = Assert.IsType<FieldDeclaration>(result.File!.Chunks[0].Body[0]);
@@ -466,7 +478,7 @@ public class ParserIntegrationTests
               byte[16] Hash
             """;
 
-        var result = ChunkLParser.Parse(source);
+        var result = ChunkLParser.ParseSource(source);
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
 
         var body = result.File!.Chunks[0].Body;
@@ -504,7 +516,7 @@ public class ParserIntegrationTests
     [Fact]
     public void Parse_ChunkAttributes_File()
     {
-        var result = ChunkLParser.ParseFile(FixturePath("chunk_attributes.chunkl"));
+        var result = ChunkLParser.Parse(FixturePath("chunk_attributes.chunkl"));
 
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
         var file = result.File!;
@@ -557,7 +569,7 @@ public class ParserIntegrationTests
     [Fact]
     public void Parse_ControlFlowAdvanced_File()
     {
-        var result = ChunkLParser.ParseFile(FixturePath("control_flow_advanced.chunkl"));
+        var result = ChunkLParser.Parse(FixturePath("control_flow_advanced.chunkl"));
 
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
         var file = result.File!;
@@ -610,7 +622,7 @@ public class ParserIntegrationTests
     [Fact]
     public void Parse_TypeModifiers_File()
     {
-        var result = ChunkLParser.ParseFile(FixturePath("type_modifiers.chunkl"));
+        var result = ChunkLParser.Parse(FixturePath("type_modifiers.chunkl"));
 
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
         var body = result.File!.Chunks[0].Body;
@@ -657,7 +669,7 @@ public class ParserIntegrationTests
               ident MapInfo = empty
             """;
 
-        var result = ChunkLParser.Parse(source);
+        var result = ChunkLParser.ParseSource(source);
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
 
         var body = result.File!.Chunks[0].Body;
