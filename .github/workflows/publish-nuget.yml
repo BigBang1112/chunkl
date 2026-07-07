@@ -12,11 +12,7 @@ permissions:
 
 jobs:
   publish:
-    uses: BigBang1112/workflows/.github/workflows/publish-nuget.yml@main
-    permissions:
-      contents: write # important for release description edit and asset upload
-      packages: write
-      id-token: write
+    uses: BigBang1112/workflows/.github/workflows/publish-nuget.yml@test-id-token
     with:
       nuget-username: BigBang1112
       project-path: ChunkL/ChunkL.csproj
