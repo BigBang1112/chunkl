@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write # important for release description edit and asset upload
   packages: write
+  id-token: write
 
 jobs:
   publish:
