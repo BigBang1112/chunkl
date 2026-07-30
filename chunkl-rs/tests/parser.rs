@@ -5,6 +5,7 @@ use chunkl::{parse_file, parse_source, write, BodyStatement, VersionConditionKin
 fn fixture(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
+        .join("dotnet")
         .join("ChunkL.Tests")
         .join("Fixtures")
         .join(name)
