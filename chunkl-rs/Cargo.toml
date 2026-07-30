@@ -1,0 +1,10 @@
+[package]
+name = "chunkl"
+version = "0.1.0"
+edition = "2021"
+description = "Parser and writer for the ChunkL language"
+license = "MIT"
+keywords = ["chunkl", "parser", "gbx"]
+categories = ["parser-implementations"]
+
+[dependencies]

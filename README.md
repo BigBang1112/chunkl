@@ -86,6 +86,16 @@ dotnet build
 dotnet test
 ```
 
+## Rust library
+
+The dependency-free Rust implementation is in [chunkl-rs](chunkl-rs/). It provides the lexer,
+public syntax tree, parser, diagnostics, and canonical writer.
+
+```sh
+cd chunkl-rs
+cargo test
+```
+
 ## License
 
 Licensed under the [MIT License](LICENSE.txt).
