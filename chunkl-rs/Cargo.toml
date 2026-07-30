@@ -1,10 +1,16 @@
 [package]
 name = "chunkl"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85"
 description = "Parser and writer for the ChunkL language"
+readme = "README.md"
+repository = "https://github.com/BigBang1112/chunkl"
+homepage = "https://github.com/BigBang1112/chunkl"
 license = "MIT"
+authors = ["Petr Pivoňka"]
 keywords = ["chunkl", "parser", "gbx"]
 categories = ["parser-implementations"]
+exclude = ["target/", "tests/"]
 
 [dependencies]
