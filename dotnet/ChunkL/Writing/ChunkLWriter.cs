@@ -236,7 +236,7 @@ public sealed class ChunkLWriter
         if (field.DefaultValue != null)
         {
             _sb.Append(" = ");
-            _sb.Append(field.DefaultValue);
+            WriteExpression(field.DefaultValue);
         }
 
         if (field.Attributes != null)
@@ -313,7 +313,7 @@ public sealed class ChunkLWriter
     {
         WriteIndent();
         _sb.Append("if ");
-        _sb.Append(ifStmt.Condition);
+        WriteExpression(ifStmt.Condition);
         WriteComment(ifStmt.TrailingComment);
         WriteNewLine();
 
@@ -325,7 +325,7 @@ public sealed class ChunkLWriter
         {
             WriteIndent();
             _sb.Append("else if ");
-            _sb.Append(elseIf.Condition);
+            WriteExpression(elseIf.Condition);
             WriteComment(elseIf.TrailingComment);
             WriteNewLine();
 
@@ -377,7 +377,7 @@ public sealed class ChunkLWriter
     {
         WriteIndent();
         _sb.Append("skip ");
-        _sb.Append(skip.Expression);
+        WriteExpression(skip.Expression);
         if (skip.Attributes != null)
         {
             _sb.Append(' ');
@@ -391,7 +391,7 @@ public sealed class ChunkLWriter
     {
         WriteIndent();
         _sb.Append("assert ");
-        _sb.Append(assert.Condition);
+        WriteExpression(assert.Condition);
         if (assert.Attributes != null)
         {
             _sb.Append(' ');
@@ -422,7 +422,7 @@ public sealed class ChunkLWriter
     {
         WriteIndent();
         _sb.Append("loop ");
-        _sb.Append(loop.CountExpression);
+        WriteExpression(loop.CountExpression);
         WriteComment(loop.TrailingComment);
         WriteNewLine();
 
@@ -435,7 +435,7 @@ public sealed class ChunkLWriter
     {
         WriteIndent();
         _sb.Append("switch ");
-        _sb.Append(sw.Expression);
+        WriteExpression(sw.Expression);
         WriteComment(sw.TrailingComment);
         WriteNewLine();
 
@@ -444,7 +444,7 @@ public sealed class ChunkLWriter
         {
             WriteIndent();
             _sb.Append("case ");
-            _sb.Append(c.Value);
+            WriteExpression(c.Value);
             WriteComment(c.TrailingComment);
             WriteNewLine();
 
@@ -472,7 +472,7 @@ public sealed class ChunkLWriter
         WriteIndent();
         _sb.Append(ca.TargetName);
         _sb.Append(" = ");
-        _sb.Append(ca.Expression);
+        WriteExpression(ca.Expression);
         WriteComment(ca.TrailingComment);
         WriteNewLine();
     }
@@ -554,6 +554,81 @@ public sealed class ChunkLWriter
             _sb.Append(']');
             WriteComment(member.TrailingComment);
             WriteNewLine();
+        }
+    }
+
+    public string WriteExpr(Expression expr)
+    {
+        _sb.Clear();
+        WriteExpression(expr);
+        return _sb.ToString();
+    }
+
+    private void WriteExpression(Expression expr)
+    {
+        switch (expr)
+        {
+            case LiteralExpression lit:
+                _sb.Append(lit.Value);
+                break;
+            case IdentifierExpression ident:
+                _sb.Append(ident.Name);
+                break;
+            case ScopedIdentifierExpression scoped:
+                _sb.Append(scoped.Qualifier);
+                _sb.Append("::");
+                _sb.Append(scoped.Name);
+                break;
+            case UnaryExpression unary:
+                _sb.Append(unary.Operator switch
+                {
+                    UnaryOperator.Not => "!",
+                    UnaryOperator.BitwiseNot => "~",
+                    UnaryOperator.Negate => "-",
+                    _ => ""
+                });
+                WriteExpression(unary.Operand);
+                break;
+            case BinaryExpression binary:
+                WriteExpression(binary.Left);
+                _sb.Append(binary.Operator switch
+                {
+                    BinaryOperator.LogicalOr => " || ",
+                    BinaryOperator.LogicalAnd => " && ",
+                    BinaryOperator.Equal => " == ",
+                    BinaryOperator.NotEqual => " != ",
+                    BinaryOperator.LessThan => " < ",
+                    BinaryOperator.GreaterThan => " > ",
+                    BinaryOperator.LessOrEqual => " <= ",
+                    BinaryOperator.GreaterOrEqual => " >= ",
+                    BinaryOperator.BitwiseOr => " | ",
+                    BinaryOperator.BitwiseXor => " ^ ",
+                    BinaryOperator.BitwiseAnd => " & ",
+                    BinaryOperator.ShiftLeft => " << ",
+                    BinaryOperator.ShiftRight => " >> ",
+                    BinaryOperator.Add => " + ",
+                    BinaryOperator.Subtract => " - ",
+                    BinaryOperator.Multiply => " * ",
+                    BinaryOperator.Divide => " / ",
+                    _ => " "
+                });
+                WriteExpression(binary.Right);
+                break;
+            case ParenthesizedExpression paren:
+                _sb.Append('(');
+                WriteExpression(paren.Inner);
+                _sb.Append(')');
+                break;
+            case TupleExpression tuple:
+                _sb.Append('(');
+                for (var i = 0; i < tuple.Elements.Count; i++)
+                {
+                    if (i > 0)
+                        _sb.Append(", ");
+                    WriteExpression(tuple.Elements[i]);
+                }
+                _sb.Append(')');
+                break;
         }
     }
 }

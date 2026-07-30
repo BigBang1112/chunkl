@@ -29,6 +29,15 @@ pub fn write_with_options(file: &ChunkLFile, options: &WriterOptions) -> String 
     .write_file(file)
 }
 
+pub fn write_expression(expr: &Expression) -> String {
+    let mut writer = Writer {
+        output: String::new(),
+        options: &WriterOptions::default(),
+    };
+    writer.expr(expr);
+    writer.output
+}
+
 struct Writer<'a> {
     output: String,
     options: &'a WriterOptions,
@@ -172,7 +181,7 @@ impl Writer<'_> {
                 }
                 if let Some(value) = &field.default_value {
                     self.output.push_str(" = ");
-                    self.output.push_str(value);
+                    self.expr(value);
                 }
                 if let Some(attributes) = &field.attributes {
                     self.output.push(' ');
@@ -216,7 +225,7 @@ impl Writer<'_> {
             }
             BodyStatement::Loop(statement) => {
                 self.output.push_str("loop ");
-                self.output.push_str(&statement.count_expression);
+                self.expr(&statement.count_expression);
                 self.comment(statement.trailing_comment.as_ref());
                 self.newline();
                 self.body(&statement.body, level + 1);
@@ -225,7 +234,7 @@ impl Writer<'_> {
             BodyStatement::Assignment(statement) => {
                 self.output.push_str(&statement.target_name);
                 self.output.push_str(" = ");
-                self.output.push_str(&statement.expression);
+                self.expr(&statement.expression);
                 self.comment(statement.trailing_comment.as_ref());
                 self.newline();
             }
@@ -235,14 +244,14 @@ impl Writer<'_> {
 
     fn if_statement(&mut self, statement: &IfStatement, level: usize) {
         self.output.push_str("if ");
-        self.output.push_str(&statement.condition);
+        self.expr(&statement.condition);
         self.comment(statement.trailing_comment.as_ref());
         self.newline();
         self.body(&statement.body, level + 1);
         for clause in &statement.else_ifs {
             self.indent(level);
             self.output.push_str("else if ");
-            self.output.push_str(&clause.condition);
+            self.expr(&clause.condition);
             self.comment(clause.trailing_comment.as_ref());
             self.newline();
             self.body(&clause.body, level + 1);
@@ -258,13 +267,13 @@ impl Writer<'_> {
 
     fn switch(&mut self, statement: &SwitchStatement, level: usize) {
         self.output.push_str("switch ");
-        self.output.push_str(&statement.expression);
+        self.expr(&statement.expression);
         self.comment(statement.trailing_comment.as_ref());
         self.newline();
         for case in &statement.cases {
             self.indent(level + 1);
             self.output.push_str("case ");
-            self.output.push_str(&case.value);
+            self.expr(&case.value);
             self.comment(case.trailing_comment.as_ref());
             self.newline();
             self.body(&case.body, level + 2);
@@ -291,7 +300,7 @@ impl Writer<'_> {
     fn expression(&mut self, keyword: &str, statement: &ExpressionStatement) {
         self.output.push_str(keyword);
         self.output.push(' ');
-        self.output.push_str(&statement.expression);
+        self.expr(&statement.expression);
         if let Some(attributes) = &statement.attributes {
             self.output.push(' ');
             self.attributes(attributes);
@@ -378,5 +387,71 @@ impl Writer<'_> {
 
     fn newline(&mut self) {
         self.output.push_str(&self.options.newline);
+    }
+
+    fn expr(&mut self, expression: &Expression) {
+        match expression {
+            Expression::Literal(lit) => match lit {
+                Literal::Integer(s) | Literal::Hex(s) | Literal::Float(s) => {
+                    self.output.push_str(s);
+                }
+                Literal::String(s) => self.output.push_str(s),
+                Literal::Bool(b) => self.output.push_str(if *b { "true" } else { "false" }),
+                Literal::Null => self.output.push_str("null"),
+                Literal::Empty => self.output.push_str("empty"),
+            },
+            Expression::Identifier(name) => self.output.push_str(name),
+            Expression::ScopedIdentifier { qualifier, name } => {
+                self.output.push_str(qualifier);
+                self.output.push_str("::");
+                self.output.push_str(name);
+            }
+            Expression::Unary { operator, operand } => {
+                self.output.push_str(match operator {
+                    UnaryOp::Not => "!",
+                    UnaryOp::BitwiseNot => "~",
+                    UnaryOp::Negate => "-",
+                });
+                self.expr(operand);
+            }
+            Expression::Binary { left, operator, right } => {
+                self.expr(left);
+                self.output.push_str(match operator {
+                    BinaryOp::LogicalOr => " || ",
+                    BinaryOp::LogicalAnd => " && ",
+                    BinaryOp::Equal => " == ",
+                    BinaryOp::NotEqual => " != ",
+                    BinaryOp::LessThan => " < ",
+                    BinaryOp::GreaterThan => " > ",
+                    BinaryOp::LessOrEqual => " <= ",
+                    BinaryOp::GreaterOrEqual => " >= ",
+                    BinaryOp::BitwiseOr => " | ",
+                    BinaryOp::BitwiseXor => " ^ ",
+                    BinaryOp::BitwiseAnd => " & ",
+                    BinaryOp::ShiftLeft => " << ",
+                    BinaryOp::ShiftRight => " >> ",
+                    BinaryOp::Add => " + ",
+                    BinaryOp::Subtract => " - ",
+                    BinaryOp::Multiply => " * ",
+                    BinaryOp::Divide => " / ",
+                });
+                self.expr(right);
+            }
+            Expression::Parenthesized(inner) => {
+                self.output.push('(');
+                self.expr(inner);
+                self.output.push(')');
+            }
+            Expression::Tuple(elements) => {
+                self.output.push('(');
+                for (i, element) in elements.iter().enumerate() {
+                    if i > 0 {
+                        self.output.push_str(", ");
+                    }
+                    self.expr(element);
+                }
+                self.output.push(')');
+            }
+        }
     }
 }

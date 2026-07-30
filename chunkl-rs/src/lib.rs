@@ -2,15 +2,17 @@
 
 pub mod ast;
 pub mod diagnostic;
+pub mod expression;
 pub mod lexer;
 mod parser;
 mod writer;
 
 pub use ast::*;
 pub use diagnostic::{Diagnostic, DiagnosticSeverity, SourcePosition, SourceRange};
+pub use expression::parse_expression;
 pub use lexer::{Lexer, Token, TokenKind};
 pub use parser::{parse_file, parse_reader, parse_source};
-pub use writer::{write, write_with_options, WriterOptions};
+pub use writer::{write, write_expression, write_with_options, WriterOptions};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseResult {

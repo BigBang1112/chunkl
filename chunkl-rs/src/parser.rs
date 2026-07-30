@@ -3,6 +3,7 @@ use std::io::{self, Read};
 use std::path::Path;
 
 use crate::ast::*;
+use crate::expression::parse_expression;
 use crate::{Diagnostic, ParseResult, SourcePosition, SourceRange};
 
 #[derive(Clone, Copy)]
@@ -337,7 +338,7 @@ impl<'a> Parser<'a> {
     fn parse_if(&mut self, indent: usize) -> IfStatement {
         let line = self.take();
         let (text, trailing_comment) = split_comment(line.text);
-        let condition = text["if".len()..].trim().to_owned();
+        let condition = parse_expression(text["if".len()..].trim());
         let body = self.parse_body(indent + 2);
         let mut else_ifs = Vec::new();
         let mut else_clause = None;
@@ -351,7 +352,7 @@ impl<'a> Parser<'a> {
                 let clause_line = self.take();
                 let (clause_text, comment) = split_comment(clause_line.text);
                 else_ifs.push(ElseIfClause {
-                    condition: clause_text["else if".len()..].trim().to_owned(),
+                    condition: parse_expression(clause_text["else if".len()..].trim()),
                     body: self.parse_body(indent + 2),
                     trailing_comment: comment,
                 });
@@ -380,7 +381,7 @@ impl<'a> Parser<'a> {
         let line = self.take();
         let (text, trailing_comment) = split_comment(line.text);
         LoopStatement {
-            count_expression: text["loop".len()..].trim().to_owned(),
+            count_expression: parse_expression(text["loop".len()..].trim()),
             body: self.parse_body(indent + 2),
             trailing_comment,
         }
@@ -414,7 +415,7 @@ impl<'a> Parser<'a> {
                 let case_line = self.take();
                 let (case_text, comment) = split_comment(case_line.text);
                 cases.push(SwitchCase {
-                    value: case_text["case".len()..].trim().to_owned(),
+                    value: parse_expression(case_text["case".len()..].trim()),
                     body: self.parse_body(indent + 4),
                     trailing_comment: comment,
                 });
@@ -430,7 +431,7 @@ impl<'a> Parser<'a> {
             }
         }
         SwitchStatement {
-            expression: text["switch".len()..].trim().to_owned(),
+            expression: parse_expression(text["switch".len()..].trim()),
             cases,
             default,
             trailing_comment,
@@ -451,9 +452,9 @@ impl<'a> Parser<'a> {
         let line = self.take();
         let (text, trailing_comment) = split_comment(line.text);
         let remainder = text[keyword.len()..].trim();
-        let (expression, attributes) = take_trailing_attributes(remainder);
+        let (expr_text, attributes) = take_trailing_attributes(remainder);
         ExpressionStatement {
-            expression: expression.to_owned(),
+            expression: parse_expression(expr_text),
             attributes,
             trailing_comment,
         }
@@ -467,7 +468,7 @@ impl<'a> Parser<'a> {
             if !left.contains(char::is_whitespace) && !is_special_keyword(left) {
                 return BodyStatement::Assignment(ComputedAssignment {
                     target_name: left.to_owned(),
-                    expression: right.trim().to_owned(),
+                    expression: parse_expression(right.trim()),
                     trailing_comment,
                 });
             }
@@ -476,7 +477,7 @@ impl<'a> Parser<'a> {
         let (without_attributes, attributes) = take_trailing_attributes(text);
         let (declaration, default_value) = without_attributes
             .split_once('=')
-            .map(|(declaration, value)| (declaration.trim(), Some(value.trim().to_owned())))
+            .map(|(declaration, value)| (declaration.trim(), Some(parse_expression(value.trim()))))
             .unwrap_or((without_attributes, None));
         let mut parts = declaration.split_whitespace();
         let type_text = parts.next().unwrap_or_default();

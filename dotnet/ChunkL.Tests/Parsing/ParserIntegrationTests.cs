@@ -8,6 +8,8 @@ public class ParserIntegrationTests
     private static string FixturePath(string name) =>
         Path.Combine(AppContext.BaseDirectory, "Fixtures", name);
 
+    private static string W(Expression? expr) => expr is null ? "" : ChunkLParser.WriteExpression(expr);
+
     [Fact]
     public void Parse_Minimal_File()
     {
@@ -121,7 +123,7 @@ public class ParserIntegrationTests
         // Default value
         var localPlayer = chunk1.Body.OfType<FieldDeclaration>()
             .First(f => f.Name == "LocalPlayerClipEntIndex");
-        Assert.Equal("-1", localPlayer.DefaultValue);
+        Assert.Equal("-1", W(localPlayer.DefaultValue));
 
         // Second chunk (skippable)
         var chunk2 = file.Chunks[1];
@@ -137,16 +139,16 @@ public class ParserIntegrationTests
 
         // if statement
         var ifStmt = Assert.IsType<IfStatement>(chunk3.Body[1]);
-        Assert.Contains("Version >= 1", ifStmt.Condition);
+        Assert.Contains("Version >= 1", W(ifStmt.Condition));
 
         // loop statement
         var loopStmt = Assert.IsType<LoopStatement>(chunk3.Body[2]);
-        Assert.Equal("4", loopStmt.CountExpression);
+        Assert.Equal("4", W(loopStmt.CountExpression));
         Assert.Single(loopStmt.Body);
 
         // switch statement
         var switchStmt = Assert.IsType<SwitchStatement>(chunk3.Body[3]);
-        Assert.Equal("Version", switchStmt.Expression);
+        Assert.Equal("Version", W(switchStmt.Expression));
         Assert.Equal(2, switchStmt.Cases.Count);
         Assert.NotNull(switchStmt.Default);
     }
@@ -296,10 +298,10 @@ public class ParserIntegrationTests
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
 
         var ifStmt = Assert.IsType<IfStatement>(result.File!.Chunks[0].Body[0]);
-        Assert.Contains("ItemType != EItemType::Ornament", ifStmt.Condition);
+        Assert.Contains("ItemType != EItemType::Ornament", W(ifStmt.Condition));
         Assert.Single(ifStmt.Body);
         Assert.Single(ifStmt.ElseIfs);
-        Assert.Contains("ItemType == EItemType::Character", ifStmt.ElseIfs[0].Condition);
+        Assert.Contains("ItemType == EItemType::Character", W(ifStmt.ElseIfs[0].Condition));
         Assert.NotNull(ifStmt.Else);
         Assert.Single(ifStmt.Else!.Body);
     }
@@ -369,7 +371,7 @@ public class ParserIntegrationTests
 
         var body = result.File!.Chunks[0].Body;
         Assert.Equal("Flags", Assert.IsType<ComputedAssignment>(body[1]).TargetName);
-        Assert.Contains("Flags & 0x1FFFF", Assert.IsType<ComputedAssignment>(body[1]).Expression);
+        Assert.Contains("Flags & 0x1FFFF", W(Assert.IsType<ComputedAssignment>(body[1]).Expression));
     }
 
     [Fact]
@@ -414,13 +416,13 @@ public class ParserIntegrationTests
 
         var body = result.File!.Chunks[0].Body;
         var skip = Assert.IsType<SkipStatement>(body[0]);
-        Assert.Equal("8", skip.Expression);
+        Assert.Equal("8", W(skip.Expression));
 
         var assert1 = Assert.IsType<AssertStatement>(body[1]);
-        Assert.Contains("Version <= 5", assert1.Condition);
+        Assert.Contains("Version <= 5", W(assert1.Condition));
 
         var assert2 = Assert.IsType<AssertStatement>(body[2]);
-        Assert.Contains("Signature == 0xDEADBEEF", assert2.Condition);
+        Assert.Contains("Signature == 0xDEADBEEF", W(assert2.Condition));
         Assert.NotNull(assert2.Attributes);
     }
 
@@ -591,11 +593,11 @@ public class ParserIntegrationTests
         // skip + assert
         var skipAssertChunk = file.Chunks[1];
         var skip1 = Assert.IsType<SkipStatement>(skipAssertChunk.Body[0]);
-        Assert.Equal("8", skip1.Expression);
+        Assert.Equal("8", W(skip1.Expression));
         var skip2 = Assert.IsType<SkipStatement>(skipAssertChunk.Body[2]);
-        Assert.Equal("Count", skip2.Expression);
+        Assert.Equal("Count", W(skip2.Expression));
         var assert1 = Assert.IsType<AssertStatement>(skipAssertChunk.Body[3]);
-        Assert.Contains("Version <= 5", assert1.Condition);
+        Assert.Contains("Version <= 5", W(assert1.Condition));
         var assert2 = Assert.IsType<AssertStatement>(skipAssertChunk.Body[4]);
         Assert.NotNull(assert2.Attributes);
 
@@ -614,9 +616,9 @@ public class ParserIntegrationTests
         var computedChunk = file.Chunks[4];
         var computed1 = Assert.IsType<ComputedAssignment>(computedChunk.Body[1]);
         Assert.Equal("Flags", computed1.TargetName);
-        Assert.Contains("Flags & 0x1FFFF", computed1.Expression);
+        Assert.Contains("Flags & 0x1FFFF", W(computed1.Expression));
         var computed2 = Assert.IsType<ComputedAssignment>(computedChunk.Body[2]);
-        Assert.Contains("Flags | 0x2000", computed2.Expression);
+        Assert.Contains("Flags | 0x2000", W(computed2.Expression));
     }
 
     [Fact]
@@ -647,7 +649,7 @@ public class ParserIntegrationTests
 
         // anonymous numeric assertion: `version = 2`
         var versionAssert = fields.Single(f => f.Type.Name == "version");
-        Assert.Equal("2", versionAssert.DefaultValue);
+        Assert.Equal("2", W(versionAssert.DefaultValue));
         Assert.True(versionAssert.IsSpecialKeyword);
 
         // trailing anonymous, unnamed field `float`
@@ -674,9 +676,9 @@ public class ParserIntegrationTests
 
         var body = result.File!.Chunks[0].Body;
 
-        Assert.Equal("true", ((FieldDeclaration)body[0]).DefaultValue);
-        Assert.Equal("0.5f", ((FieldDeclaration)body[1]).DefaultValue);
-        Assert.Equal("1", ((FieldDeclaration)body[2]).DefaultValue);
-        Assert.Equal("empty", ((FieldDeclaration)body[3]).DefaultValue);
+        Assert.Equal("true", W(((FieldDeclaration)body[0]).DefaultValue));
+        Assert.Equal("0.5f", W(((FieldDeclaration)body[1]).DefaultValue));
+        Assert.Equal("1", W(((FieldDeclaration)body[2]).DefaultValue));
+        Assert.Equal("empty", W(((FieldDeclaration)body[3]).DefaultValue));
     }
 }

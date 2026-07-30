@@ -1,5 +1,59 @@
 use crate::SourceRange;
 
+// ── Expression AST ──────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Expression {
+    Literal(Literal),
+    Identifier(String),
+    ScopedIdentifier { qualifier: String, name: String },
+    Unary { operator: UnaryOp, operand: Box<Expression> },
+    Binary { left: Box<Expression>, operator: BinaryOp, right: Box<Expression> },
+    Parenthesized(Box<Expression>),
+    Tuple(Vec<Expression>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Literal {
+    Integer(String),
+    Hex(String),
+    Float(String),
+    String(String),
+    Bool(bool),
+    Null,
+    Empty,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnaryOp {
+    Not,
+    BitwiseNot,
+    Negate,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BinaryOp {
+    LogicalOr,
+    LogicalAnd,
+    Equal,
+    NotEqual,
+    LessThan,
+    GreaterThan,
+    LessOrEqual,
+    GreaterOrEqual,
+    BitwiseOr,
+    BitwiseXor,
+    BitwiseAnd,
+    ShiftLeft,
+    ShiftRight,
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+}
+
+// ── File-level AST ──────────────────────────────────────────────────────────
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChunkLFile {
     pub header: ClassHeader,
@@ -78,7 +132,7 @@ pub enum BodyStatement {
 pub struct FieldDeclaration {
     pub ty: TypeReference,
     pub name: Option<String>,
-    pub default_value: Option<String>,
+    pub default_value: Option<Expression>,
     pub attributes: Option<AttributeList>,
     pub trailing_comment: Option<Comment>,
     pub is_special_keyword: bool,
@@ -119,7 +173,7 @@ pub struct VersionCondition {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IfStatement {
-    pub condition: String,
+    pub condition: Expression,
     pub body: Vec<BodyStatement>,
     pub else_ifs: Vec<ElseIfClause>,
     pub else_clause: Option<ElseClause>,
@@ -128,7 +182,7 @@ pub struct IfStatement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ElseIfClause {
-    pub condition: String,
+    pub condition: Expression,
     pub body: Vec<BodyStatement>,
     pub trailing_comment: Option<Comment>,
 }
@@ -147,7 +201,7 @@ pub struct SimpleStatement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExpressionStatement {
-    pub expression: String,
+    pub expression: Expression,
     pub attributes: Option<AttributeList>,
     pub trailing_comment: Option<Comment>,
 }
@@ -161,14 +215,14 @@ pub struct BlockStatement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoopStatement {
-    pub count_expression: String,
+    pub count_expression: Expression,
     pub body: Vec<BodyStatement>,
     pub trailing_comment: Option<Comment>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SwitchStatement {
-    pub expression: String,
+    pub expression: Expression,
     pub cases: Vec<SwitchCase>,
     pub default: Option<SwitchDefault>,
     pub trailing_comment: Option<Comment>,
@@ -176,7 +230,7 @@ pub struct SwitchStatement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SwitchCase {
-    pub value: String,
+    pub value: Expression,
     pub body: Vec<BodyStatement>,
     pub trailing_comment: Option<Comment>,
 }
@@ -190,7 +244,7 @@ pub struct SwitchDefault {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComputedAssignment {
     pub target_name: String,
-    pub expression: String,
+    pub expression: Expression,
     pub trailing_comment: Option<Comment>,
 }
 
