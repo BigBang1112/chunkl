@@ -2,12 +2,88 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
-  pull_request:
-    branches: [main, dev]
+    branches: [main, dev, rust-lib]
+  workflow_dispatch:
 
 jobs:
-  ci:
-    uses: BigBang1112/workflows/.github/workflows/ci.yml@main
-    with:
-      dotnet-version: 10.0.x
+  dotnet:
+    name: Build (.NET)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        # .NET project lives in dotnet/, not the repo root
+        working-directory: dotnet
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set DOTNET_INSTALL_DIR
+        run: echo "DOTNET_INSTALL_DIR=$HOME/.dotnet" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Cache NuGet Packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('dotnet/**/*.csproj', 'dotnet/**/*.props', 'dotnet/**/*.targets') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore -p:ContinuousIntegrationBuild=true
+
+      - name: Test
+        run: dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+      - name: Generate Code Coverage Summary
+        run: |
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          reportgenerator -reports:"./coverage/**/coverage.cobertura.xml" -targetdir:"./coveragereport" -reporttypes:"MarkdownSummaryGithub"
+
+      - name: Publish Coverage to Job Summary
+        shell: bash
+        run: cat ./coveragereport/SummaryGithub.md >> $GITHUB_STEP_SUMMARY
+
+  rust:
+    name: Build (Rust)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: chunkl-rs
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            chunkl-rs/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('chunkl-rs/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Test
+        run: cargo test --verbose

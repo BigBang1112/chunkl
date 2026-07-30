@@ -535,9 +535,7 @@ public sealed class Parser
         var ifToken = Current;
         Advance(); // skip 'if'
 
-        var condition = ReadFreeFormExpression();
-        if (string.IsNullOrWhiteSpace(condition))
-            _diagnostics.ReportError("Expected expression", Current.Position);
+        var condition = ParseExpression();
         var comment = TryParseTrailingComment();
 
         if (Current.Kind == TokenKind.Newline)
@@ -566,9 +564,7 @@ public sealed class Parser
                     // else if
                     Advance(); // skip 'else'
                     Advance(); // skip 'if'
-                    var eifCondition = ReadFreeFormExpression();
-                    if (string.IsNullOrWhiteSpace(eifCondition))
-                        _diagnostics.ReportError("Expected expression", Current.Position);
+                    var eifCondition = ParseExpression();
                     var eifComment = TryParseTrailingComment();
                     if (Current.Kind == TokenKind.Newline)
                         Advance();
@@ -663,9 +659,7 @@ public sealed class Parser
     {
         var startToken = Current;
         Advance(); // skip 'skip'
-        var expr = ReadFreeFormExpressionBeforeAttrs();
-        if (string.IsNullOrWhiteSpace(expr))
-            _diagnostics.ReportError("Expected expression", Current.Position);
+        var expr = ParseExpressionBeforeAttrs();
 
         AttributeList? attrs = null;
         if (Current.Kind == TokenKind.OpenParen)
@@ -690,9 +684,7 @@ public sealed class Parser
     {
         var startToken = Current;
         Advance(); // skip 'assert'
-        var condition = ReadFreeFormExpressionBeforeAttrs();
-        if (string.IsNullOrWhiteSpace(condition))
-            _diagnostics.ReportError("Expected expression", Current.Position);
+        var condition = ParseExpressionBeforeAttrs();
 
         AttributeList? attrs = null;
         if (Current.Kind == TokenKind.OpenParen)
@@ -743,9 +735,7 @@ public sealed class Parser
     {
         var startToken = Current;
         Advance(); // skip 'loop'
-        var countExpr = ReadFreeFormExpression();
-        if (string.IsNullOrWhiteSpace(countExpr))
-            _diagnostics.ReportError("Expected expression", Current.Position);
+        var countExpr = ParseExpression();
 
         var comment = TryParseTrailingComment();
         if (Current.Kind == TokenKind.Newline)
@@ -766,9 +756,7 @@ public sealed class Parser
     {
         var startToken = Current;
         Advance(); // skip 'switch'
-        var expr = ReadFreeFormExpression();
-        if (string.IsNullOrWhiteSpace(expr))
-            _diagnostics.ReportError("Expected expression", Current.Position);
+        var expr = ParseExpression();
 
         var comment = TryParseTrailingComment();
         if (Current.Kind == TokenKind.Newline)
@@ -791,9 +779,7 @@ public sealed class Parser
             if (Current.Kind == TokenKind.Identifier && Current.Text == "case")
             {
                 Advance(); // skip 'case'
-                var caseValue = ReadFreeFormExpression();
-                if (string.IsNullOrWhiteSpace(caseValue))
-                    _diagnostics.ReportError("Expected expression", Current.Position);
+                var caseValue = ParseExpression();
                 var caseComment = TryParseTrailingComment();
                 if (Current.Kind == TokenKind.Newline)
                     Advance();
@@ -880,7 +866,7 @@ public sealed class Parser
     {
         var nameToken = Advance(); // identifier
         Advance(); // =
-        var expr = ReadFreeFormExpression();
+        var expr = ParseExpression();
         var comment = TryParseTrailingComment();
         if (Current.Kind == TokenKind.Newline)
             Advance();
@@ -900,7 +886,7 @@ public sealed class Parser
         var typeRef = ParseTypeReference();
 
         string? name = null;
-        string? defaultValue = null;
+        Expression? defaultValue = null;
         AttributeList? attrs = null;
         var isSpecial = SpecialKeywords.Contains(typeRef.Name);
 
@@ -919,7 +905,7 @@ public sealed class Parser
         if (Current.Kind == TokenKind.Equals)
         {
             Advance(); // skip =
-            defaultValue = ReadFreeFormExpressionBeforeAttrs();
+            defaultValue = ParseExpressionBeforeAttrs();
         }
 
         // Check for attribute list
@@ -1106,7 +1092,7 @@ public sealed class Parser
             if (Current.Kind == TokenKind.Equals)
             {
                 Advance(); // =
-                explicitValue = ReadFreeFormExpression();
+                explicitValue = ReadToEndOfExpression();
             }
 
             var memberComment = TryParseTrailingComment();
@@ -1191,71 +1177,30 @@ public sealed class Parser
     }
 
     /// <summary>
-    /// Read a free-form expression from the source text using token offsets.
-    /// Stops at newline, comment, or EOF.
+    /// Parse an expression, stopping at newline, comment, or EOF.
     /// </summary>
-    private string ReadFreeFormExpression()
+    private Expression ParseExpression()
     {
-        if (Current.Kind == TokenKind.Newline || Current.Kind == TokenKind.Comment ||
-            Current.Kind == TokenKind.EndOfFile)
-            return "";
-
-        var startOffset = Current.SourceOffset;
-        var endOffset = startOffset;
-
-        while (Current.Kind != TokenKind.Newline && Current.Kind != TokenKind.Comment &&
-               Current.Kind != TokenKind.EndOfFile)
-        {
-            endOffset = Current.SourceOffset + Current.SourceLength;
-            Advance();
-        }
-
-        return _source.Substring(startOffset, endOffset - startOffset).Trim();
+        var parser = new ExpressionParser(_tokens, _pos);
+        var expr = parser.Parse();
+        _pos = parser.Position;
+        return expr;
     }
 
     /// <summary>
-    /// Read a free-form expression, stopping before attribute list (...), comment, or newline.
+    /// Parse an expression, stopping before a trailing attribute list (...), comment, or newline.
     /// </summary>
-    private string ReadFreeFormExpressionBeforeAttrs()
+    private Expression ParseExpressionBeforeAttrs()
     {
         if (Current.Kind == TokenKind.Newline || Current.Kind == TokenKind.Comment ||
-            Current.Kind == TokenKind.EndOfFile || Current.Kind == TokenKind.OpenParen)
-            return "";
+            Current.Kind == TokenKind.EndOfFile ||
+            (Current.Kind == TokenKind.OpenParen && LooksLikeAttributeListAhead()))
+            return new IdentifierExpression { Name = "" };
 
-        var startOffset = Current.SourceOffset;
-        var endOffset = startOffset;
-
-        // We need to detect when we hit an attribute-list open paren.
-        // An attribute list paren is one that's NOT part of the expression itself.
-        // Heuristic: track paren depth. A ( at depth 0 that follows a name/value
-        // and doesn't look like it continues an arithmetic expression is an attribute list.
-        var parenDepth = 0;
-
-        while (Current.Kind != TokenKind.Newline && Current.Kind != TokenKind.Comment &&
-               Current.Kind != TokenKind.EndOfFile)
-        {
-            if (Current.Kind == TokenKind.OpenParen)
-            {
-                if (parenDepth == 0)
-                {
-                    // Check if this looks like an attribute list rather than expression grouping
-                    // If the previous meaningful content ended and this ( starts attributes
-                    // Look ahead: if the content inside looks like "flag" or "key: value", it's attrs
-                    if (LooksLikeAttributeListAhead())
-                        break;
-                }
-                parenDepth++;
-            }
-            else if (Current.Kind == TokenKind.CloseParen)
-            {
-                parenDepth--;
-            }
-
-            endOffset = Current.SourceOffset + Current.SourceLength;
-            Advance();
-        }
-
-        return _source.Substring(startOffset, endOffset - startOffset).Trim();
+        var parser = new ExpressionParser(_tokens, _pos);
+        var expr = parser.Parse();
+        _pos = parser.Position;
+        return expr;
     }
 
     private bool LooksLikeAttributeListAhead()
@@ -1280,5 +1225,22 @@ public sealed class Parser
 
         _pos = savedPos;
         return false;
+    }
+
+    private string ReadToEndOfExpression()
+    {
+        if (Current.Kind is TokenKind.Newline or TokenKind.Comment or TokenKind.EndOfFile)
+            return "";
+
+        var startOffset = Current.SourceOffset;
+        var endOffset = startOffset;
+
+        while (Current.Kind is not (TokenKind.Newline or TokenKind.Comment or TokenKind.EndOfFile))
+        {
+            endOffset = Current.SourceOffset + Current.SourceLength;
+            Advance();
+        }
+
+        return _source.Substring(startOffset, endOffset - startOffset).Trim();
     }
 }

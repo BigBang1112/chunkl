@@ -59,4 +59,13 @@ public static class ChunkLParser
         var writer = new ChunkLWriter(options);
         return writer.Write(file);
     }
+
+    /// <summary>
+    /// Write a single expression back to its text representation.
+    /// </summary>
+    public static string WriteExpression(Expression expression)
+    {
+        var writer = new ChunkLWriter();
+        return writer.WriteExpr(expression);
+    }
 }

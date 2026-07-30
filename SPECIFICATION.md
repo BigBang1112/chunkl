@@ -21,7 +21,8 @@ ChunkL (`.chunkl`) is a domain-specific language used in GBX.NET to describe the
 13. [Archive Declarations](#13-archive-declarations)
 14. [Assignment and Default Values](#14-assignment-and-default-values)
 15. [Comments](#15-comments)
-16. [Full File Example](#16-full-file-example)
+16. [Expressions](#16-expressions)
+17. [Full File Example](#17-full-file-example)
 
 ---
 
@@ -183,7 +184,7 @@ A version list, enclosed in square brackets `[...]`, specifies which version con
 0xHHH [VersionA, VersionB, VersionC]
 ```
 
-Each entry is a free-form identifier — typically a short label representing a software version, game title, platform, or other context in which the chunk is known to appear. There is no fixed set of allowed identifiers; any alphanumeric label is valid.
+Each entry is an alphanumeric identifier — typically a short label representing a software version, game title, platform, or other context in which the chunk is known to appear. There is no fixed set of allowed identifiers; any alphanumeric label is valid.
 
 A version identifier may be followed by `.vN` to indicate the maximum chunk version observed in that context:
 
@@ -375,7 +376,7 @@ Conditional execution of a field block, with optional `else if` and `else` branc
     field...
 ```
 
-- The condition is a free-form expression spanning from `if`/`else if` to the end of the line (or to a trailing comment).
+- The condition is an [expression](#17-expressions).
 - `else if` and `else` must immediately follow the last field of the preceding branch (at the same indentation level as `if`).
 - Any number of `else if` branches may appear; `else` is optional.
 - `if` does not support attribute lists.
@@ -432,7 +433,7 @@ Marks an incomplete, unsupported, or deliberately unimplemented section. Encount
 
 ### `skip`
 
-Skips a number of bytes in the binary stream without reading them into a named field. The byte count is a free-form expression:
+Skips a number of bytes in the binary stream without reading them into a named field. The byte count is an [expression](#17-expressions):
 
 ```
   skip N
@@ -450,7 +451,7 @@ Asserts that a condition holds during parsing. If the condition is false, an exc
   assert condition (type: InvalidDataException)
 ```
 
-The condition is a free-form expression, identical in form to an `if` condition. `assert` supports attribute lists.
+The condition is an [expression](#17-expressions). `assert` supports attribute lists.
 
 Examples:
 ```
@@ -524,8 +525,8 @@ Dispatches to one of several field blocks based on the value of an expression:
       field...
 ```
 
-- The `switch` expression is a free-form expression, identical in form to an `if` condition.
-- Each `case` value is a free-form expression.
+- The `switch` expression is an [expression](#17-expressions).
+- Each `case` value is an [expression](#17-expressions).
 - `default` is optional and matches when no `case` value matches.
 - Cases do not fall through; each block is independent.
 - `switch` does not support attribute lists.
@@ -719,7 +720,7 @@ archive
 
 ### Constant Field Values
 
-A field declaration may include a default value using `= value`. The value is a free-form literal expression spanning from `=` to the end of the line, stopping before an attribute list `(...)` or a trailing comment.
+A field declaration may include a default value using `= value`. The value is an [expression](#17-expressions).
 
 ```
 bool IsEnabled = true
@@ -736,7 +737,7 @@ Material[] Materials = empty
 
 ### Computed Assignments
 
-An assignment without a type keyword mutates an already-declared variable using an expression:
+An assignment without a type keyword mutates an already-declared variable using an [expression](#17-expressions):
 
 ```
 Flags = Flags & 0x1FFFF
@@ -772,7 +773,79 @@ Comments may appear anywhere a trailing comment is valid: after any declaration,
 
 ---
 
-## 16. Full File Example
+## 16. Expressions
+
+Expressions appear in `if`/`else if` conditions, `switch`/`case` values, `assert` conditions, `skip` counts, `loop` counts, field default values, and computed assignments. Every expression is parsed according to the grammar below using standard C-style operator precedence.
+
+### Grammar
+
+```
+expression     = logical_or
+logical_or     = logical_and ('||' logical_and)*
+logical_and    = equality ('&&' equality)*
+equality       = comparison (('==' | '!=') comparison)*
+comparison     = bitwise_or (('<' | '>' | '<=' | '>=') bitwise_or)*
+bitwise_or     = bitwise_xor ('|' bitwise_xor)*
+bitwise_xor    = bitwise_and ('^' bitwise_and)*
+bitwise_and    = shift ('&' shift)*
+shift          = additive (('<<' | '>>') additive)*
+additive       = multiplicative (('+' | '-') multiplicative)*
+multiplicative = unary (('*' | '/') unary)*
+unary          = ('!' | '~' | '-') unary | primary
+primary        = grouped | tuple | literal | scoped_identifier | identifier
+
+grouped        = '(' expression ')'
+tuple          = '(' expression ',' expression (',' expression)* ')'
+```
+
+A primary expression is one of:
+
+| Form | Examples | Notes |
+|------|----------|-------|
+| Integer literal | `0`, `1`, `-1`, `42` | Decimal integer (the unary minus is parsed as a unary operator) |
+| Hex literal | `0xDEADBEEF`, `0x1FFFF` | Case-insensitive hex digits after `0x` |
+| Float literal | `0.5f`, `1.0` | Optional `f` suffix |
+| String literal | `""`, `"hello"` | Double-quoted, backslash escaping |
+| Boolean literal | `true`, `false` | |
+| Null literal | `null` | |
+| Empty literal | `empty` | Represents an empty/default collection |
+| Identifier | `Version`, `Flags`, `Count` | Any alphanumeric name (field or variable reference) |
+| Scoped identifier | `EItemType::Ornament` | `Qualifier::Member` for enum/flags values |
+| Grouped | `(Flags & (1 << 15))` | Parenthesized sub-expression |
+| Tuple | `(1, 1, 1)` | Comma-separated values in parentheses |
+
+### Operators
+
+Operators are listed from lowest to highest precedence:
+
+| Precedence | Operators | Associativity | Meaning |
+|---|---|---|---|
+| 1 | `\|\|` | Left | Logical OR |
+| 2 | `&&` | Left | Logical AND |
+| 3 | `==` `!=` | Left | Equality |
+| 4 | `<` `>` `<=` `>=` | Left | Comparison |
+| 5 | `\|` | Left | Bitwise OR |
+| 6 | `^` | Left | Bitwise XOR |
+| 7 | `&` | Left | Bitwise AND |
+| 8 | `<<` `>>` | Left | Bit shift |
+| 9 | `+` `-` | Left | Addition, subtraction |
+| 10 | `*` `/` | Left | Multiplication, division |
+| 11 | `!` `~` `-` | Right (unary) | Logical NOT, bitwise NOT, negation |
+
+### Examples
+
+```
+Version >= 1
+(Flags & (1 << 15)) != 0
+MaterialName == null || MaterialName == ""
+ItemType != EItemType::Ornament
+Flags & 0x1FFFF
+(1, 1, 1)
+```
+
+---
+
+## 17. Full File Example
 
 The following illustrates a typical `.chunkl` file combining most language features:
 

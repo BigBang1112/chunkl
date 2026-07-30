@@ -31,59 +31,22 @@ enum Direction
   West
 ```
 
-## Installing the library
+## .NET library
 
-The library is published as a NuGet package:
-
-```
-dotnet add package ChunkL
-```
-
-## Using the library
-
-```csharp
-using ChunkL;
-
-// Parse a .chunkl file from disk
-var result = ChunkLParser.Parse("CGameCtnBlock.chunkl");
-
-// Or parse ChunkL source text directly
-var result2 = ChunkLParser.ParseSource(sourceText);
-
-// Or parse from a stream (an embedded resource or network stream)
-using var stream = File.OpenRead("CGameCtnBlock.chunkl");
-var result3 = ChunkLParser.Parse(stream);
-
-if (!result.Success)
-{
-    foreach (var diagnostic in result.Diagnostics)
-    {
-        Console.WriteLine(diagnostic); // Severity, position, message, and optional code
-    }
-    return;
-}
-
-var file = result.File!;
-Console.WriteLine($"{file.Header.ClassName} ({file.Header.ClassId})");
-
-foreach (var chunk in file.Chunks)
-{
-    Console.WriteLine($"Chunk {chunk.Offset.HexValue}: {chunk.Body.Count} statements");
-}
-
-// Write the parsed AST back to ChunkL source
-var written = ChunkLParser.Write(file);
-```
+The [dotnet](dotnet/) folder contains the .NET implementation, published as a NuGet package. See that folder for installation, usage, and build/test instructions.
 
 ## VS Code extension
 
 The [vscode-chunkl](vscode-chunkl/) extension adds `.chunkl` language support to VS Code: syntax highlighting (via a TextMate grammar) and editor completions. See that folder for build/packaging instructions.
 
-## Building and testing
+## Rust library
 
-```
-dotnet build
-dotnet test
+The dependency-free Rust implementation is in [chunkl-rs](chunkl-rs/). It provides the lexer,
+public syntax tree, parser, diagnostics, and canonical writer.
+
+```sh
+cd chunkl-rs
+cargo test
 ```
 
 ## License

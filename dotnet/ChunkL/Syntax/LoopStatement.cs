@@ -1,8 +1,8 @@
 ﻿namespace ChunkL.Syntax;
 
-public sealed class SwitchCase : SyntaxNode
+public sealed class LoopStatement : SyntaxNode, IBodyStatement
 {
-    public required string Value { get; set; }
+    public required Expression CountExpression { get; set; }
     public List<IBodyStatement> Body { get; set; } = [];
     public Comment? TrailingComment { get; set; }
 }
