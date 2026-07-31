@@ -60,6 +60,26 @@ fn parses_nested_control_flow_and_type_modifiers() {
 }
 
 #[test]
+fn parses_version_condition_attributes() {
+    let source = r#"TestClass 0x01000000
+
+0x001
+  version
+  v5+ (new_in: TM2020)
+    int Value
+"#;
+    let result = parse_source(source);
+    assert!(result.success(), "{:?}", result.diagnostics);
+    let body = &result.file.unwrap().chunks[0].body;
+    let BodyStatement::VersionCondition(condition) = &body[1] else {
+        panic!()
+    };
+    let attributes = condition.attributes.as_ref().expect("attributes");
+    assert_eq!(attributes.entries[0].name, "new_in");
+    assert_eq!(attributes.entries[0].value.as_deref(), Some("TM2020"));
+}
+
+#[test]
 fn all_reference_fixtures_round_trip_to_the_same_ast() {
     for name in [
         "minimal.chunkl",

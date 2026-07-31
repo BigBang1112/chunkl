@@ -326,10 +326,13 @@ impl<'a> Parser<'a> {
         let line = self.take();
         let (text, trailing_comment) = split_comment(line.text);
         let (kind, version, version_end) = parse_version_marker(text).unwrap();
+        let marker_len = text.split_whitespace().next().map_or(text.len(), str::len);
+        let (attributes, _) = take_leading_attributes(text[marker_len..].trim());
         BodyStatement::VersionCondition(VersionCondition {
             kind,
             version,
             version_end,
+            attributes,
             body: self.parse_body(indent + 2),
             trailing_comment,
         })

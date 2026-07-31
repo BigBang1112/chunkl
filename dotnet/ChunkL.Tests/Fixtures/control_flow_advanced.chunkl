@@ -21,7 +21,7 @@ CGameCtnBlockInfo 0x0304E000
   assert Signature == 0xDEADBEEF (type: CorruptedDataException)
 
 0x01A [TM2020]
-  v5+
+  v5+ (new_in: TM2020)
     CGameCtnBlockUnitInfo[] Unit
     return
   vec3[]

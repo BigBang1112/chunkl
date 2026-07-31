@@ -510,6 +510,12 @@ public sealed class Parser
             _diagnostics.ReportError("Expected +, -, =, or .. after version number", Current.Position);
         }
 
+        AttributeList? attributes = null;
+        if (Current.Kind == TokenKind.OpenParen)
+        {
+            attributes = ParseAttributeList();
+        }
+
         var comment = TryParseTrailingComment();
 
         // Consume newline
@@ -524,6 +530,7 @@ public sealed class Parser
             Kind = kind,
             Version = version,
             VersionEnd = versionEnd,
+            Attributes = attributes,
             Body = body,
             TrailingComment = comment,
             Position = MakeRange(token)

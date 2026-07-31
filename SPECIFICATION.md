@@ -335,6 +335,12 @@ vN=      → if version == N      (present only in this exact version)
 vN..M    → if version >= N && version <= M  (present in versions N through M inclusive)
 ```
 
+A version condition may be followed by an optional **(attribute list)**, using the same syntax as chunk attributes: flags (`name`) and key–value pairs (`name: value`), comma-separated. Both `name` and `value` can contain spaces. It appears after the version marker and before the inline comment:
+
+```
+vN+ (flag, key: value) // comment
+```
+
 Example:
 ```
 0x002 [TM10.v3, TMF.v11, TM2020.v13] // description
@@ -350,7 +356,7 @@ Example:
       int Cost
       v5+
         bool IsLapRace
-        v6+
+        v6+ (new_in: TM2020)
           int<PlayMode> Mode
   v3..7
     bool HasCustomData

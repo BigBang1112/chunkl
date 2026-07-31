@@ -605,6 +605,8 @@ public class ParserIntegrationTests
         var returnChunk = file.Chunks[2];
         var versionBlock = Assert.IsType<VersionCondition>(returnChunk.Body[0]);
         Assert.IsType<ReturnStatement>(versionBlock.Body[1]);
+        Assert.Equal("new_in", versionBlock.Attributes!.Entries[0].Name);
+        Assert.Equal("TM2020", versionBlock.Attributes.Entries[0].Value);
 
         // throw statements
         var throwChunk = file.Chunks[3];

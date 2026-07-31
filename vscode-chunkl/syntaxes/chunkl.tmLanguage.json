@@ -89,14 +89,19 @@
       }
     },
     "version-condition": {
-      "match": "^(\\s+)(v)(\\d+)(?:(\\.\\.)(\\d+)|([+\\-=]))",
-      "captures": {
+      "begin": "^(\\s+)(v)(\\d+)(?:(\\.\\.)(\\d+)|([+\\-=]))",
+      "end": "$",
+      "beginCaptures": {
         "2": { "name": "keyword.control.version.chunkl" },
         "3": { "name": "constant.numeric.integer.version.chunkl" },
         "4": { "name": "keyword.operator.range.chunkl" },
         "5": { "name": "constant.numeric.integer.version.chunkl" },
         "6": { "name": "keyword.operator.version.chunkl" }
-      }
+      },
+      "patterns": [
+        { "include": "#attribute-list" },
+        { "include": "#comments" }
+      ]
     },
     "control-flow": {
       "patterns": [

@@ -204,6 +204,10 @@ impl Writer<'_> {
                         }
                     }
                 }
+                if let Some(attributes) = &condition.attributes {
+                    self.output.push(' ');
+                    self.attributes(attributes);
+                }
                 self.comment(condition.trailing_comment.as_ref());
                 self.newline();
                 self.body(&condition.body, level + 1);

@@ -301,6 +301,12 @@ public sealed class ChunkLWriter
                 break;
         }
 
+        if (vc.Attributes != null)
+        {
+            _sb.Append(' ');
+            WriteAttributeList(vc.Attributes);
+        }
+
         WriteComment(vc.TrailingComment);
         WriteNewLine();
 

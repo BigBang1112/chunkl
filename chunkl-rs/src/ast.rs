@@ -167,6 +167,7 @@ pub struct VersionCondition {
     pub kind: VersionConditionKind,
     pub version: u32,
     pub version_end: Option<u32>,
+    pub attributes: Option<AttributeList>,
     pub body: Vec<BodyStatement>,
     pub trailing_comment: Option<Comment>,
 }
