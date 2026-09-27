@@ -433,6 +433,8 @@ public sealed class Parser
                     return ParseBlockStatement(expectedIndent);
                 case "loop":
                     return ParseLoopStatement(expectedIndent);
+                case "while":
+                    return ParseWhileStatement(expectedIndent);
                 case "switch":
                     return ParseSwitchStatement(expectedIndent);
             }
@@ -759,6 +761,25 @@ public sealed class Parser
         };
     }
 
+    private WhileStatement ParseWhileStatement(int currentIndent)
+    {
+        var startToken = Current;
+        Advance(); // skip 'while'
+        var condition = ParseExpression();
+
+        var comment = TryParseTrailingComment();
+        if (Current.Kind == TokenKind.Newline)
+            Advance();
+
+        return new WhileStatement
+        {
+            Condition = condition,
+            Body = ParseBody(currentIndent + 2),
+            TrailingComment = comment,
+            Position = MakeRange(startToken)
+        };
+    }
+
     private SwitchStatement ParseSwitchStatement(int currentIndent)
     {
         var startToken = Current;
@@ -1008,9 +1029,11 @@ public sealed class Parser
             }
             else
             {
-                // Fixed-count array: [N] or [FieldName]
-                var countExpr = Current.Text;
-                Advance(); // consume the count token
+                // Preserve the complete expression while using the expression parser
+                // to find the closing bracket.
+                var startOffset = Current.SourceOffset;
+                ParseExpression();
+                var countExpr = _source.Substring(startOffset, Current.SourceOffset - startOffset).Trim();
                 Expect(TokenKind.CloseBracket);
                 fixedArrayCount = countExpr;
             }

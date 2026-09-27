@@ -234,6 +234,13 @@ impl Writer<'_> {
                 self.newline();
                 self.body(&statement.body, level + 1);
             }
+            BodyStatement::While(statement) => {
+                self.output.push_str("while ");
+                self.expr(&statement.condition);
+                self.comment(statement.trailing_comment.as_ref());
+                self.newline();
+                self.body(&statement.body, level + 1);
+            }
             BodyStatement::Switch(statement) => self.switch(statement, level),
             BodyStatement::Assignment(statement) => {
                 self.output.push_str(&statement.target_name);

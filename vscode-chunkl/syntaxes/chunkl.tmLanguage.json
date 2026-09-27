@@ -180,19 +180,12 @@
           }
         },
         {
-          "match": "(?<=\\s)(loop)\\b\\s*(\\w+)?",
+          "match": "(?<=\\s)(loop|while)\\b\\s+(.+?)(?=\\s*(?://|#|$))",
           "captures": {
-            "1": { "name": "keyword.control.loop.chunkl" },
+            "1": { "name": "keyword.control.repeat.chunkl" },
             "2": {
               "patterns": [
-                {
-                  "match": "\\d+",
-                  "name": "constant.numeric.integer.chunkl"
-                },
-                {
-                  "match": "\\w+",
-                  "name": "variable.other.chunkl"
-                }
+                { "include": "#expression" }
               ]
             }
           }
@@ -255,23 +248,23 @@
       "begin": "(?<=\\s)([a-z_]\\w*)(<)",
       "end": "(?=\\s*(?://|#|$))",
       "beginCaptures": {
-        "1": { "name": "variable.other.field.chunkl" },
+        "1": { "name": "storage.type.primitive.chunkl" },
         "2": { "name": "punctuation.definition.typeparameters.begin.chunkl" }
       },
       "patterns": [
         {
-          "match": "([A-Za-z][\\w.]*)(>)([?])?((?:\\[(?:\\w+)?\\])*)",
+          "match": "([A-Za-z][\\w.]*)(>)([?])?((?:\\[[^\\]\\r\\n]*\\])*)",
           "captures": {
             "1": { "name": "entity.name.type.cast.chunkl" },
             "2": { "name": "punctuation.definition.typeparameters.end.chunkl" },
             "3": { "name": "storage.modifier.nullable.chunkl" },
-            "4": { "name": "storage.modifier.array.chunkl" }
+            "4": { "patterns": [{ "include": "#array-count" }] }
           }
         },
         {
           "match": "\\s+([A-Za-z_]\\w*)",
           "captures": {
-            "1": { "name": "storage.type.primitive.chunkl" }
+            "1": { "name": "variable.other.field.chunkl" }
           }
         },
         {
@@ -292,24 +285,24 @@
       "begin": "(?<=\\s)([A-Z][A-Za-z0-9_]*)(<)",
       "end": "(?=\\s*(?://|#|$))",
       "beginCaptures": {
-        "1": { "name": "variable.other.field.chunkl" },
+        "1": { "name": "support.class.chunkl" },
         "2": { "name": "punctuation.definition.typeparameters.begin.chunkl" }
       },
       "patterns": [
         {
-          "match": "([A-Za-z][\\w.]*)(>)([*])?([?])?((?:\\[(?:\\w+)?\\])*)",
+          "match": "([A-Za-z][\\w.]*)(>)([*])?([?])?((?:\\[[^\\]\\r\\n]*\\])*)",
           "captures": {
             "1": { "name": "entity.name.type.cast.chunkl" },
             "2": { "name": "punctuation.definition.typeparameters.end.chunkl" },
             "3": { "name": "storage.modifier.chunk-preference.chunkl" },
             "4": { "name": "storage.modifier.nullable.chunkl" },
-            "5": { "name": "storage.modifier.array.chunkl" }
+            "5": { "patterns": [{ "include": "#array-count" }] }
           }
         },
         {
           "match": "\\s+([A-Za-z_]\\w*)",
           "captures": {
-            "1": { "name": "support.class.chunkl" }
+            "1": { "name": "variable.other.field.chunkl" }
           }
         },
         {
@@ -327,12 +320,12 @@
       ]
     },
     "field-primitive": {
-      "match": "(?<=\\s)([a-z_]\\w*)([?])?((?:\\[(?:\\w+)?\\])*)(?:\\s+([A-Za-z_]\\w*))?(?:\\s*(=)\\s*(.+?))?(?=\\s*(?://|#|\\(|$))",
+      "match": "(?<=\\s)([a-z_]\\w*)([?])?((?:\\[[^\\]\\r\\n]*\\])*)(?:\\s+([A-Za-z_]\\w*))?(?:\\s*(=)\\s*(.+?))?(?=\\s*(?://|#|\\(|$))",
       "captures": {
-        "1": { "name": "variable.other.field.chunkl" },
+        "1": { "name": "storage.type.primitive.chunkl" },
         "2": { "name": "storage.modifier.nullable.chunkl" },
-        "3": { "name": "storage.modifier.array.chunkl" },
-        "4": { "name": "storage.type.primitive.chunkl" },
+        "3": { "patterns": [{ "include": "#array-count" }] },
+        "4": { "name": "variable.other.field.chunkl" },
         "5": { "name": "keyword.operator.assignment.chunkl" },
         "6": {
           "patterns": [
@@ -342,13 +335,13 @@
       }
     },
     "field-class": {
-      "match": "(?<=\\s)([A-Z][A-Za-z0-9_]*)([*])?([?])?((?:\\[(?:\\w+)?\\])*)(?:\\s+([A-Za-z_]\\w*))?(?:\\s*(=)\\s*(.+?))?(?=\\s*(?://|#|\\(|$))",
+      "match": "(?<=\\s)([A-Z][A-Za-z0-9_]*)([*])?([?])?((?:\\[[^\\]\\r\\n]*\\])*)(?:\\s+([A-Za-z_]\\w*))?(?:\\s*(=)\\s*(.+?))?(?=\\s*(?://|#|\\(|$))",
       "captures": {
-        "1": { "name": "variable.other.field.chunkl" },
+        "1": { "name": "support.class.chunkl" },
         "2": { "name": "storage.modifier.chunk-preference.chunkl" },
         "3": { "name": "storage.modifier.nullable.chunkl" },
-        "4": { "name": "storage.modifier.array.chunkl" },
-        "5": { "name": "support.class.chunkl" },
+        "4": { "patterns": [{ "include": "#array-count" }] },
+        "5": { "name": "variable.other.field.chunkl" },
         "6": { "name": "keyword.operator.assignment.chunkl" },
         "7": {
           "patterns": [
@@ -356,6 +349,20 @@
           ]
         }
       }
+    },
+    "array-count": {
+      "begin": "(\\[)",
+      "end": "(\\])",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.array.begin.chunkl" }
+      },
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.array.end.chunkl" }
+      },
+      "patterns": [
+        { "include": "#expression" },
+        { "match": "\\b[A-Za-z_]\\w*\\b", "name": "variable.other.array-count.chunkl" }
+      ]
     },
     "computed-assignment": {
       "match": "^(\\s+)([A-Za-z_]\\w*)\\s*(=)\\s*(.+?)(?=\\s*(?://|#|$))",

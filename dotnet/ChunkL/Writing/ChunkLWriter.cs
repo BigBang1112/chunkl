@@ -210,6 +210,9 @@ public sealed class ChunkLWriter
             case LoopStatement loop:
                 WriteLoopStatement(loop);
                 break;
+            case WhileStatement whileStatement:
+                WriteWhileStatement(whileStatement);
+                break;
             case SwitchStatement sw:
                 WriteSwitchStatement(sw);
                 break;
@@ -434,6 +437,19 @@ public sealed class ChunkLWriter
 
         _indentLevel++;
         WriteBody(loop.Body);
+        _indentLevel--;
+    }
+
+    private void WriteWhileStatement(WhileStatement statement)
+    {
+        WriteIndent();
+        _sb.Append("while ");
+        WriteExpression(statement.Condition);
+        WriteComment(statement.TrailingComment);
+        WriteNewLine();
+
+        _indentLevel++;
+        WriteBody(statement.Body);
         _indentLevel--;
     }
 

@@ -303,13 +303,14 @@ impl<'a> Parser<'a> {
             return self.parse_version_condition(indent);
         }
         for keyword in [
-            "if", "switch", "loop", "block", "skip", "assert", "return", "throw",
+            "if", "switch", "loop", "while", "block", "skip", "assert", "return", "throw",
         ] {
             if starts_keyword(line.text, keyword) {
                 return match keyword {
                     "if" => BodyStatement::If(self.parse_if(indent)),
                     "switch" => BodyStatement::Switch(self.parse_switch(indent)),
                     "loop" => BodyStatement::Loop(self.parse_loop(indent)),
+                    "while" => BodyStatement::While(self.parse_while(indent)),
                     "block" => BodyStatement::Block(self.parse_block(indent)),
                     "skip" => BodyStatement::Skip(self.parse_expression_statement("skip")),
                     "assert" => BodyStatement::Assert(self.parse_expression_statement("assert")),
@@ -385,6 +386,16 @@ impl<'a> Parser<'a> {
         let (text, trailing_comment) = split_comment(line.text);
         LoopStatement {
             count_expression: parse_expression(text["loop".len()..].trim()),
+            body: self.parse_body(indent + 2),
+            trailing_comment,
+        }
+    }
+
+    fn parse_while(&mut self, indent: usize) -> WhileStatement {
+        let line = self.take();
+        let (text, trailing_comment) = split_comment(line.text);
+        WhileStatement {
+            condition: parse_expression(text["while".len()..].trim()),
             body: self.parse_body(indent + 2),
             trailing_comment,
         }
@@ -482,9 +493,8 @@ impl<'a> Parser<'a> {
             .split_once('=')
             .map(|(declaration, value)| (declaration.trim(), Some(parse_expression(value.trim()))))
             .unwrap_or((without_attributes, None));
-        let mut parts = declaration.split_whitespace();
-        let type_text = parts.next().unwrap_or_default();
-        let name = parts.next().map(str::to_owned);
+        let (type_text, remainder) = split_type_and_remainder(declaration);
+        let name = remainder.split_whitespace().next().map(str::to_owned);
         if type_text.is_empty() {
             self.error(line.number, "Expected a field declaration");
         }
@@ -535,6 +545,21 @@ fn is_hex(text: &str) -> bool {
 
 fn is_special_keyword(text: &str) -> bool {
     matches!(text, "version" | "versionb" | "base")
+}
+
+fn split_type_and_remainder(declaration: &str) -> (&str, &str) {
+    let mut bracket_depth = 0;
+    for (index, character) in declaration.char_indices() {
+        match character {
+            '[' => bracket_depth += 1,
+            ']' => bracket_depth -= 1,
+            _ if character.is_whitespace() && bracket_depth == 0 => {
+                return (&declaration[..index], declaration[index..].trim_start());
+            }
+            _ => {}
+        }
+    }
+    (declaration, "")
 }
 
 fn parse_version_marker(text: &str) -> Option<(VersionConditionKind, u32, Option<u32>)> {
@@ -593,7 +618,7 @@ fn parse_type(text: &str) -> TypeReference {
     let mut fixed_array_count = None;
     while let Some(array) = remainder.strip_prefix('[') {
         let Some(end) = array.find(']') else { break };
-        let count = &array[..end];
+        let count = array[..end].trim();
         array_dimensions += 1;
         if !count.is_empty() && fixed_array_count.is_none() {
             fixed_array_count = Some(count.to_owned());

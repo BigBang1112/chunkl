@@ -60,6 +60,56 @@ fn parses_nested_control_flow_and_type_modifiers() {
 }
 
 #[test]
+fn parses_expression_array_counts_and_while() {
+    let source = r#"TestClass 0x01000000
+
+0x001
+  int Width
+  int Height
+  int[Width * Height] Pixels
+  short[(Width + 1) * 2] Samples
+  byte HasNext
+  while HasNext != 0 // sentinel
+    int ItemType
+    byte HasNext
+"#;
+    let result = parse_source(source);
+    assert!(result.success(), "{:?}", result.diagnostics);
+    let file = result.file.unwrap();
+    let body = &file.chunks[0].body;
+    let BodyStatement::Field(pixels) = &body[2] else {
+        panic!()
+    };
+    assert_eq!(
+        pixels.ty.fixed_array_count.as_deref(),
+        Some("Width * Height")
+    );
+    assert_eq!(pixels.name.as_deref(), Some("Pixels"));
+    let BodyStatement::Field(samples) = &body[3] else {
+        panic!()
+    };
+    assert_eq!(
+        samples.ty.fixed_array_count.as_deref(),
+        Some("(Width + 1) * 2")
+    );
+    let BodyStatement::While(statement) = &body[5] else {
+        panic!()
+    };
+    assert_eq!(statement.body.len(), 2);
+    assert_eq!(
+        statement.trailing_comment.as_ref().map(|c| c.text.as_str()),
+        Some("sentinel")
+    );
+
+    let generated = write(&file);
+    assert!(generated.contains("int[Width * Height] Pixels"));
+    assert!(generated.contains("while HasNext != 0 // sentinel"));
+    let reparsed = parse_source(&generated);
+    assert!(reparsed.success(), "{:?}", reparsed.diagnostics);
+    assert_eq!(write(&reparsed.file.unwrap()), generated);
+}
+
+#[test]
 fn parses_version_condition_attributes() {
     let source = r#"TestClass 0x01000000
 

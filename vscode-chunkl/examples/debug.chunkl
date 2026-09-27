@@ -1,0 +1,10 @@
+CDebugSample 0x01000000
+
+0x001
+  int Width
+  int Height
+  int[Width * Height] Pixels
+  byte HasNext
+  while HasNext != 0 // Read until the terminating flag.
+    int ItemType
+    byte HasNext

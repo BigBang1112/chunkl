@@ -3,7 +3,7 @@ import { ChunkLCompletionProvider } from "./completionProvider";
 
 export function activate(context: vscode.ExtensionContext): void {
   const provider = vscode.languages.registerCompletionItemProvider(
-    { language: "chunkl", scheme: "file" },
+    { language: "chunkl" },
     new ChunkLCompletionProvider(),
     "(",
     "<",

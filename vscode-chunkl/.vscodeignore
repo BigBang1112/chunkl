@@ -1,6 +1,8 @@
 src/
 .vscode/
 node_modules/
+examples/
+test/
 *.ts
 !*.d.ts
 *.map

@@ -229,8 +229,9 @@ The following are special keywords that generate control flow rather than a data
 | `skip` | Skip a number of bytes without reading their contents. See [Control Flow](#10-control-flow). |
 | `assert` | Assert that a condition is true and raise an exception otherwise. See [Control Flow](#10-control-flow). |
 | `loop` | Repeat a field block a number of times. See [Control Flow](#10-control-flow). |
+| `while` | Repeat a field block while a condition remains true. See [Control Flow](#10-control-flow). |
 
-Most of these support attribute lists and trailing comments. `if`, `loop`, and `switch` do not support attribute lists.
+Most of these support attribute lists and trailing comments. `if`, `loop`, `while`, and `switch` do not support attribute lists.
 
 ---
 
@@ -300,7 +301,7 @@ Nullable element arrays: `[]` after `?` on the element type:
 CMwNod?[] NadeoSkinFids (external)
 ```
 
-Fixed count arrays: placing an integer literal or a previously-read integer field name inside `[...]` declares an array whose element count is not read from the stream:
+Fixed count arrays: placing an integer expression inside `[...]` declares an array whose element count is not read from the stream. The expression uses the syntax in [Expressions](#16-expressions) and may refer to previously read fields:
 
 ```
 float[4] Quaternion
@@ -308,8 +309,16 @@ byte[16] Guid
 int[3] Rgb
 vec3[8] BoundingCorners
 int Count
+int Width
+int Height
+int NumSamples
 vec3[Count] Points
+short[Count * 2] PackedSamples
+int[Width * Height] IconPixels
+int[NumSamples - 1] SampleOffsets
 ```
+
+The count expression is evaluated once, immediately before the array is read or written. It must produce a non-negative integer. A fixed count array has no additional count prefix in the binary stream. Spaces inside the brackets are allowed; `short[Count * 2]` is one type declaration.
 
 Fixed count and nullable elements may be combined:
 ```
@@ -494,7 +503,7 @@ Example:
 
 ### `loop` Statement
 
-Repeats a field block a fixed number of times. The count is either a literal integer or the name of a previously-read integer field:
+Repeats a field block a fixed number of times. The count is an integer [expression](#16-expressions), evaluated once before the first iteration:
 
 ```
   loop N // comment
@@ -514,7 +523,24 @@ Examples:
     string Name
     int Flags
     bool IsEnabled
+
+  loop Width * Height
+    int Pixel
 ```
+
+### `while` Statement
+
+Repeats a field block while a boolean [expression](#16-expressions) is true. The condition is evaluated before every iteration, including the first. Fields used by the first evaluation must already have values, and the body can update them for later evaluations:
+
+```
+  byte HasNext
+  while HasNext != 0
+    int ItemType
+    byte[] ItemData
+    byte HasNext
+```
+
+In this example, a field declaration with the same name inside the loop updates the existing value on each iteration. The terminating `HasNext` byte is consumed, but the body is skipped when it is zero. `while` may be nested inside other control flow blocks and may have a trailing comment. It does not take an attribute list.
 
 ### `switch` Statement
 
@@ -780,7 +806,7 @@ Comments may appear anywhere a trailing comment is valid: after any declaration,
 
 ## 16. Expressions
 
-Expressions appear in `if`/`else if` conditions, `switch`/`case` values, `assert` conditions, `skip` counts, `loop` counts, field default values, and computed assignments. Every expression is parsed according to the grammar below using standard C-style operator precedence.
+Expressions appear in `if`/`else if` and `while` conditions, `switch`/`case` values, `assert` conditions, `skip` counts, `loop` counts, fixed array counts, field default values, and computed assignments. Every expression is parsed according to the grammar below using standard C-style operator precedence.
 
 ### Grammar
 

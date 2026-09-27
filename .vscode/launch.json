@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug ChunkL extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/vscode-chunkl",
+        "${workspaceFolder}/vscode-chunkl/examples"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/vscode-chunkl/out/**/*.js"
+      ],
+      "preLaunchTask": "Build ChunkL extension"
+    }
+  ]
+}

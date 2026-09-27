@@ -35,6 +35,7 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
+    "test": "tsc -p ./ && node test/completionContext.test.js",
     "package": "vsce package"
   },
   "devDependencies": {

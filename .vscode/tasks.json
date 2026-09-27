@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build ChunkL extension",
+      "type": "process",
+      "command": "node",
+      "args": ["node_modules/typescript/bin/tsc", "-p", "./"],
+      "options": {
+        "cwd": "${workspaceFolder}/vscode-chunkl"
+      },
+      "group": "build",
+      "problemMatcher": "$tsc"
+    }
+  ]
+}

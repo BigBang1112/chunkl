@@ -516,6 +516,44 @@ public class ParserIntegrationTests
     }
 
     [Fact]
+    public void Parse_ExpressionArrayCountsAndWhile()
+    {
+        var source = """
+            TestClass 0x01000000
+
+            0x001
+              int Width
+              int Height
+              int[Width * Height] Pixels
+              short[(Width + 1) * 2] Samples
+              byte HasNext
+              while HasNext != 0 // sentinel
+                int ItemType
+                byte HasNext
+            """;
+
+        var result = ChunkLParser.ParseSource(source);
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
+
+        var body = result.File!.Chunks[0].Body;
+        Assert.Equal("Width * Height", Assert.IsType<FieldDeclaration>(body[2]).Type.FixedArrayCount);
+        Assert.Equal("(Width + 1) * 2", Assert.IsType<FieldDeclaration>(body[3]).Type.FixedArrayCount);
+
+        var loop = Assert.IsType<WhileStatement>(body[5]);
+        Assert.Equal("HasNext != 0", W(loop.Condition));
+        Assert.Equal("sentinel", loop.TrailingComment?.Text);
+        Assert.Equal(2, loop.Body.Count);
+        Assert.Equal("HasNext", Assert.IsType<FieldDeclaration>(loop.Body[1]).Name);
+
+        var written = ChunkLParser.Write(result.File);
+        Assert.Contains("int[Width * Height] Pixels", written);
+        Assert.Contains("while HasNext != 0 // sentinel", written);
+        var reparsed = ChunkLParser.ParseSource(written);
+        Assert.True(reparsed.Success, string.Join("; ", reparsed.Diagnostics.Select(d => d.ToString())));
+        Assert.Equal(written, ChunkLParser.Write(reparsed.File!));
+    }
+
+    [Fact]
     public void Parse_ChunkAttributes_File()
     {
         var result = ChunkLParser.Parse(FixturePath("chunk_attributes.chunkl"));

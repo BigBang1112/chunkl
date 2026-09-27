@@ -12,11 +12,22 @@ See the [language specification](../SPECIFICATION.md) for the full syntax.
 
 Completions come from fixed lists. The extension does not parse files or report diagnostics.
 
+The grammar and snippets support expression based fixed array counts and `while` blocks.
+
+## Debugging
+
+1. Open the repository root in VS Code and run `npm ci` in `vscode-chunkl` once.
+2. Press **F5** and choose **Debug ChunkL extension**. The launch task compiles the extension and opens an Extension Development Host with `examples/debug.chunkl` available.
+3. Open `debug.chunkl`, place a breakpoint in `src/completionProvider.ts`, and request completions with **Ctrl+Space**. Breakpoints map to TypeScript through source maps.
+
+After changing TypeScript, restart the debug session to recompile. After changing the grammar or language configuration, run **Developer: Reload Window** in the Extension Development Host.
+
 ## Building and packaging
 
 ```sh
 npm ci
 npm run compile
+npm test
 npm run package
 ```
 

@@ -123,6 +123,7 @@ pub enum BodyStatement {
     Assert(ExpressionStatement),
     Block(BlockStatement),
     Loop(LoopStatement),
+    While(WhileStatement),
     Switch(SwitchStatement),
     Assignment(ComputedAssignment),
     Comment(Comment),
@@ -217,6 +218,13 @@ pub struct BlockStatement {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoopStatement {
     pub count_expression: Expression,
+    pub body: Vec<BodyStatement>,
+    pub trailing_comment: Option<Comment>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WhileStatement {
+    pub condition: Expression,
     pub body: Vec<BodyStatement>,
     pub trailing_comment: Option<Comment>,
 }
