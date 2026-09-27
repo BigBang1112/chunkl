@@ -1,6 +1,6 @@
 # ChunkL Language Specification
 
-ChunkL (`.chunkl`) is a domain-specific language used in GBX.NET to describe the binary serialization structure of Gbx (GameBox) classes and their chunks. Each `.chunkl` file corresponds to one engine class and declares how its chunks and archive types are read from or written to a Gbx binary stream.
+ChunkL (`.chunkl`) describes the binary layout of classes. Each file defines one class, its chunks, and optional archives. Version conditions describe how fields change between versions.
 
 ---
 
@@ -28,16 +28,15 @@ ChunkL (`.chunkl`) is a domain-specific language used in GBX.NET to describe the
 
 ## 1. File Structure
 
-A `.chunkl` file consists of, in order:
+A `.chunkl` file starts with a class header. The remaining declarations are:
 
-1. A **class header** (first line of the file)
-2. Optional **class modifiers** (lines starting with `- `)
-3. One or more **chunk declarations** (lines starting with `0x`)
-4. Optional **archive declarations** (lines starting with `archive `)
-5. Optional **enum declarations** (lines starting with `enum `)
-6. Optional **flags declarations** (lines starting with `flags `)
+- Optional **class attributes** (lines starting with `- `)
+- **Chunk declarations** (lines starting with `0x`)
+- **Archive declarations** (lines starting with `archive `)
+- **Enum declarations** (lines starting with `enum `)
+- **Flags declarations** (lines starting with `flags `)
 
-There is no required ordering constraint between archive and enum declarations, but they typically appear after all chunk declarations.
+Class attributes go immediately after the header. Chunks, archives, enums, and flags may then appear in any order. Blank lines and comments are allowed between declarations.
 
 ```
 ClassName 0xCLASSID000 // optional class comment
@@ -69,8 +68,8 @@ The first non-empty line of every `.chunkl` file is the **class header**:
 ClassName 0xCLASSID000
 ```
 
-- `ClassName` — The GBX engine class name (e.g., `CGameCtnChallenge`, `CPlugSolid2Model`).
-- `0xCLASSID000` — The 32-bit class identifier in hexadecimal. The lower 12 bits are always `000` at the class level; individual chunks use the lower 12 bits as the chunk offset.
+- `ClassName`: the class name, such as `CGameCtnChallenge` or `CPlugSolid2Model`.
+- `0xCLASSID000`: the 32-bit class identifier in hexadecimal. The lower 12 bits are `000` at the class level. Individual chunks use these bits as their offset.
 
 An optional inline doc comment may follow:
 
@@ -144,7 +143,7 @@ Chunk attributes appear in parentheses immediately after the chunk offset, befor
 0xHHH (flag, key: value, ...) [version_list] // comment
 ```
 
-Each attribute is either a **flag** (name only) or a **key–value pair** (`name: value`). Multiple attributes are comma-separated and may be freely combined.
+Each attribute is either a **flag** (name only) or a **key-value pair** (`name: value`). Multiple attributes are comma-separated and may be freely combined.
 
 Both key and value can contain spaces.
 
@@ -157,9 +156,9 @@ Flag Attributes:
 | `skippable` | The chunk can be skipped by the reader (has a leading size field in the binary). |
 | `ignore` | The chunk is intentionally skipped/ignored entirely. |
 | `header` | The chunk is part of the GBX header (not the body). |
-| `demonstration` | Documents a known but usually unused code path; not generated into production code. |
+| `demonstration` | Documents a known but usually unused code path. Code generators omit it from production code. |
 
-Key–Value Attributes:
+Key-value attributes:
 
 | Attribute | Value | Meaning |
 |---|---|---|
@@ -184,7 +183,7 @@ A version list, enclosed in square brackets `[...]`, specifies which version con
 0xHHH [VersionA, VersionB, VersionC]
 ```
 
-Each entry is an alphanumeric identifier — typically a short label representing a software version, game title, platform, or other context in which the chunk is known to appear. There is no fixed set of allowed identifiers; any alphanumeric label is valid.
+Each entry is an alphanumeric identifier for a game, software version, platform, or other context in which the chunk appears. There is no fixed list of labels.
 
 A version identifier may be followed by `.vN` to indicate the maximum chunk version observed in that context:
 
@@ -192,7 +191,7 @@ A version identifier may be followed by `.vN` to indicate the maximum chunk vers
 0x003 (header, struct: SHeaderCommon) [TM10.v0, TMPU.v1, TMF.v5, MP3.v11, TM2020.v11] // common
 ```
 
-This means: chunk `0x003` exists in all listed contexts; in `TM10` the chunk format goes up to version 0, in `TMPU` up to version 1, etc.
+Chunk `0x003` exists in all listed contexts. The highest observed format version is 0 in `TM10`, 1 in `TMPU`, and so on.
 
 ---
 
@@ -211,8 +210,8 @@ Field declarations appear inside a chunk body or archive body, indented by one a
 ```
 
 - **Named fields** have a name following the type.
-- **Anonymous fields** have no name; their value is read but not exposed.
-- An optional **(attribute list)** may follow the field name, using the same syntax as class and chunk attributes: flags (`name`) and key–value pairs (`name: value`), comma-separated. Both `name` and `value` can contain spaces.
+- **Anonymous fields** have no name. Their value is read but not exposed.
+- An optional **(attribute list)** may follow the field name. It contains comma-separated flags (`name`) and key-value pairs (`name: value`). Both the name and value can contain spaces.
 
 ### Special Keywords as Field Types
 
@@ -228,10 +227,10 @@ The following are special keywords that generate control flow rather than a data
 | `block` | Group fields under a custom attribute-driven block. See [Control Flow](#10-control-flow). |
 | `switch` | Dispatch to a field block based on a value. See [Control Flow](#10-control-flow). |
 | `skip` | Skip a number of bytes without reading their contents. See [Control Flow](#10-control-flow). |
-| `assert` | Assert a condition is true; raise an exception otherwise. See [Control Flow](#10-control-flow). |
+| `assert` | Assert that a condition is true and raise an exception otherwise. See [Control Flow](#10-control-flow). |
 | `loop` | Repeat a field block a number of times. See [Control Flow](#10-control-flow). |
 
-Most of these support attribute lists and trailing comments. Exceptions: `if`, `loop`, and `switch` do not support attribute lists.
+Most of these support attribute lists and trailing comments. `if`, `loop`, and `switch` do not support attribute lists.
 
 ---
 
@@ -263,7 +262,7 @@ byte<CPlugSurface.MaterialId> SurfacePhysicId
 
 ### Chunk-Preference Modifier
 
-Appending `*` directly after a class type name marks the field as preferring chunks over the self-archive when the referenced class defines both. Without `*`, the self-archive is used when available; with `*`, chunks are used instead.
+Appending `*` directly after a class type name makes the field use chunks when the referenced class defines both chunks and a self archive. Without `*`, the self archive is used when available.
 
 It appears before `?` when combined:
 
@@ -335,7 +334,7 @@ vN=      → if version == N      (present only in this exact version)
 vN..M    → if version >= N && version <= M  (present in versions N through M inclusive)
 ```
 
-A version condition may be followed by an optional **(attribute list)**, using the same syntax as chunk attributes: flags (`name`) and key–value pairs (`name: value`), comma-separated. Both `name` and `value` can contain spaces. It appears after the version marker and before the inline comment:
+A version condition may have an optional **(attribute list)** after the version marker and before the inline comment. It uses comma-separated flags (`name`) and key-value pairs (`name: value`). Both names and values can contain spaces. The tool that consumes the attribute defines its meaning:
 
 ```
 vN+ (flag, key: value) // comment
@@ -382,9 +381,9 @@ Conditional execution of a field block, with optional `else if` and `else` branc
     field...
 ```
 
-- The condition is an [expression](#17-expressions).
-- `else if` and `else` must immediately follow the last field of the preceding branch (at the same indentation level as `if`).
-- Any number of `else if` branches may appear; `else` is optional.
+- The condition is an [expression](#16-expressions).
+- `else if` and `else` must immediately follow the preceding branch at the same indentation level as `if`.
+- Any number of `else if` branches may appear. `else` is optional.
 - `if` does not support attribute lists.
 
 Examples:
@@ -439,7 +438,7 @@ Marks an incomplete, unsupported, or deliberately unimplemented section. Encount
 
 ### `skip`
 
-Skips a number of bytes in the binary stream without reading them into a named field. The byte count is an [expression](#17-expressions):
+Skips a number of bytes in the binary stream without reading them into a named field. The byte count is an [expression](#16-expressions):
 
 ```
   skip N
@@ -457,7 +456,7 @@ Asserts that a condition holds during parsing. If the condition is false, an exc
   assert condition (type: InvalidDataException)
 ```
 
-The condition is an [expression](#17-expressions). `assert` supports attribute lists.
+The condition is an [expression](#16-expressions). `assert` supports attribute lists.
 
 Examples:
 ```
@@ -476,7 +475,7 @@ Groups a set of fields under a customizable logic block. Unlike `if`, a `block` 
     field...
 ```
 
-The meaning of the attributes is defined by the block's implementation — they describe the kind of blocking logic to apply (e.g., a named scope, a custom read/write strategy, metadata for code generation). An empty attribute list is also valid.
+The block implementation defines what its attributes mean. They may specify a named scope, a custom read/write strategy, or code generation metadata. An empty attribute list is also valid.
 
 Example:
 ```
@@ -531,10 +530,10 @@ Dispatches to one of several field blocks based on the value of an expression:
       field...
 ```
 
-- The `switch` expression is an [expression](#17-expressions).
-- Each `case` value is an [expression](#17-expressions).
+- The `switch` expression is an [expression](#16-expressions).
+- Each `case` value is an [expression](#16-expressions).
 - `default` is optional and matches when no `case` value matches.
-- Cases do not fall through; each block is independent.
+- Cases do not fall through. Each block is independent.
 - `switch` does not support attribute lists.
 
 Examples:
@@ -570,7 +569,7 @@ enum EnumName // optional comment
 
 - Enum names do not support spaces.
 - Values are listed one per line, indented by two spaces.
-- An explicit value `= N` may be assigned to any member; subsequent members auto-increment unless also given explicit values.
+- An explicit value `= N` may be assigned to any member. Subsequent members increment automatically unless given another explicit value.
 - Inline comments on values are supported.
 
 Examples:
@@ -624,7 +623,7 @@ Each member occupies a contiguous range of bits within the parent integer, speci
 
 Bit positions are zero-indexed from the least significant bit.
 
-A flags type is referenced the same way as an enum cast — by annotating an integer field with the flags name in angle brackets:
+A flags type is referenced like an enum cast. Put the flags name in angle brackets after an integer field type:
 
 ```
 int<MyFlags> Flags
@@ -637,8 +636,8 @@ flags EBlockFlags
   HasSkin[15]          // bit 15: skin present
   HasAuthor[16]        // bit 16: author present
   IsGhost[17]          // bit 17
-  WaypointKind[18..19] // bits 18–19: 2-bit integer
-  Variant[20..23]      // bits 20–23: 4-bit integer
+  WaypointKind[18..19] // bits 18-19: 2-bit integer
+  Variant[20..23]      // bits 20-23: 4-bit integer
 
 flags EItemFlags
   IsVisible[0]
@@ -659,7 +658,7 @@ archive ArchiveName
 
 ### Archive Attributes
 
-An archive declaration may include an attribute list in parentheses after the name, using the same flag / key–value syntax as class and chunk attributes:
+An archive declaration may include an attribute list in parentheses after the name. It uses the same flag and key-value syntax as chunk attributes:
 
 ```
 archive ArchiveName (flag, key: value, ...)
@@ -675,7 +674,7 @@ Flag Attributes:
 |---|---|
 | `contextual` | The archive requires access to the enclosing class node during serialization. |
 
-Key–Value Attributes:
+Key-value attributes:
 
 | Attribute | Value | Meaning |
 |---|---|---|
@@ -726,7 +725,7 @@ archive
 
 ### Constant Field Values
 
-A field declaration may include a default value using `= value`. The value is an [expression](#17-expressions).
+A field declaration may include a default value using `= value`. The value is an [expression](#16-expressions).
 
 ```
 bool IsEnabled = true
@@ -743,7 +742,7 @@ Material[] Materials = empty
 
 ### Computed Assignments
 
-An assignment without a type keyword mutates an already-declared variable using an [expression](#17-expressions):
+An assignment without a type keyword mutates an already-declared variable using an [expression](#16-expressions):
 
 ```
 Flags = Flags & 0x1FFFF
@@ -865,6 +864,7 @@ CGameCtnBlock 0x03057000 // Block placed on a map.
   int Flags
 
 archive
+  version
   id Name
   byte<Direction> Direction
   byte3 Coord

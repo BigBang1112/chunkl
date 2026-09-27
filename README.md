@@ -1,12 +1,12 @@
 # ChunkL
 
-ChunkL (`.chunkl`) is a domain-specific language to describe the binary serialization structure of classes and their chunks. Each `.chunkl` file corresponds to one engine class and declares how its chunks and archive types are read from or written to a binary stream, in a way that stays backwards compatible across game versions.
+ChunkL (`.chunkl`) describes the binary layout of classes. Each file defines one class, its chunks, and optional archives. Version conditions describe how fields change between versions.
 
-For the full language reference, see [SPECIFICATION.md](SPECIFICATION.md).
+See the [language specification](SPECIFICATION.md) for the full syntax.
 
 ## What ChunkL looks like
 
-```
+```text
 CGameCtnBlock 0x03057000 // Block placed on a map.
 
 0x002 [TM10]
@@ -16,6 +16,7 @@ CGameCtnBlock 0x03057000 // Block placed on a map.
   int Flags
 
 archive
+  version
   id Name
   byte<Direction> Direction
   byte3 Coord
@@ -33,21 +34,15 @@ enum Direction
 
 ## .NET library
 
-The [dotnet](dotnet/) folder contains the .NET implementation, published as a NuGet package. See that folder for installation, usage, and build/test instructions.
+The [.NET library](dotnet/README.md) parses `.chunkl` files into a syntax tree, reports diagnostics, and writes the tree back to ChunkL. Its README covers installation and usage.
 
 ## VS Code extension
 
-The [vscode-chunkl](vscode-chunkl/) extension adds `.chunkl` language support to VS Code: syntax highlighting (via a TextMate grammar) and editor completions. See that folder for build/packaging instructions.
+The [VS Code extension](vscode-chunkl/README.md) adds syntax highlighting and completions for `.chunkl` files.
 
 ## Rust library
 
-The dependency-free Rust implementation is in [chunkl-rs](chunkl-rs/). It provides the lexer,
-public syntax tree, parser, diagnostics, and canonical writer.
-
-```sh
-cd chunkl-rs
-cargo test
-```
+The [Rust crate](chunkl-rs/README.md) provides a lexer, public syntax tree, parser, diagnostics, and writer. It has no runtime dependencies.
 
 ## License
 

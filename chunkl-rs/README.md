@@ -1,23 +1,37 @@
-# chunkl
+# ChunkL (Rust)
 
-Rust parser, public syntax tree, lexer, and canonical writer for the ChunkL language.
+The Rust crate parses [ChunkL](../README.md) (`.chunkl`) files into a public syntax tree and writes the tree back to ChunkL. It also exposes the lexer and diagnostics. The crate has no runtime dependencies and requires Rust 1.85 or later.
+
+## Usage
 
 ```rust
 use chunkl::{parse_file, write};
 
-let result = parse_file("CGameCtnBlock.chunkl")?;
-if result.success() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let result = parse_file("CGameCtnBlock.chunkl")?;
+    if !result.success() {
+        for diagnostic in result.diagnostics {
+            eprintln!("{diagnostic:?}");
+        }
+        return Ok(());
+    }
+
     let file = result.file.unwrap();
     println!("{} ({})", file.header.class_name, file.header.class_id);
     println!("{}", write(&file));
+    Ok(())
 }
-# Ok::<(), std::io::Error>(())
 ```
 
-Use `parse_source` for strings and `parse_reader` for any `std::io::Read`. The crate has no runtime dependencies.
+Use `parse_source` for strings and `parse_reader` for any `std::io::Read`. Check `ParseResult::success()` before using `file`.
 
-Run the tests from this directory with:
+## Build and test
 
-```text
+```sh
+cargo build
 cargo test
 ```
+
+## License
+
+Licensed under the [MIT License](../LICENSE.txt).
