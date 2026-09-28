@@ -3,7 +3,8 @@ use std::io::{self, Read};
 use std::path::Path;
 
 use crate::ast::*;
-use crate::expression::parse_expression;
+use crate::expression::parse_expression_checked;
+use crate::lexer::{Lexer, TokenKind};
 use crate::{Diagnostic, ParseResult, SourcePosition, SourceRange};
 
 #[derive(Clone, Copy)]
@@ -89,6 +90,9 @@ impl<'a> Parser<'a> {
             archives: Vec::new(),
             enums: Vec::new(),
             flags: Vec::new(),
+            properties: Vec::new(),
+            constructor: None,
+            declaration_order: Vec::new(),
             top_level_comments: Vec::new(),
             range: SourceRange {
                 start: SourcePosition::new(header_line.number, 1),
@@ -109,14 +113,38 @@ impl<'a> Parser<'a> {
                 file.class_attributes.push(self.parse_class_attribute());
             } else if line.text.starts_with("0x") || line.text.starts_with("0X") {
                 file.chunks.push(self.parse_chunk());
+                file.declaration_order
+                    .push(DeclarationReference::Chunk(file.chunks.len() - 1));
             } else if starts_keyword(line.text, "archive") {
                 file.archives.push(self.parse_archive());
+                file.declaration_order
+                    .push(DeclarationReference::Archive(file.archives.len() - 1));
             } else if starts_keyword(line.text, "enum") {
                 file.enums.push(self.parse_enum());
+                file.declaration_order
+                    .push(DeclarationReference::Enum(file.enums.len() - 1));
             } else if starts_keyword(line.text, "flags") {
                 file.flags.push(self.parse_flags());
+                file.declaration_order
+                    .push(DeclarationReference::Flags(file.flags.len() - 1));
+            } else if starts_keyword(line.text, "property") {
+                file.properties.push(self.parse_property());
+                file.declaration_order
+                    .push(DeclarationReference::Property(file.properties.len() - 1));
+            } else if starts_keyword(line.text, "constructor") {
+                let constructor = self.parse_constructor();
+                if file.constructor.is_some() {
+                    self.error(line.number, "At most one constructor is allowed");
+                } else {
+                    file.constructor = Some(constructor);
+                    file.declaration_order
+                        .push(DeclarationReference::Constructor);
+                }
             } else if let Some(comment) = parse_standalone_comment(line.text) {
                 file.top_level_comments.push(comment);
+                file.declaration_order.push(DeclarationReference::Comment(
+                    file.top_level_comments.len() - 1,
+                ));
                 self.index += 1;
             } else {
                 self.error(
@@ -181,6 +209,7 @@ impl<'a> Parser<'a> {
             }
         }
         ChunkDeclaration {
+            range: line_range(line),
             offset: ChunkOffset {
                 hex_value: offset_text.to_owned(),
                 is_full_id: offset_text.len() > 5,
@@ -198,6 +227,7 @@ impl<'a> Parser<'a> {
         let remainder = text["archive".len()..].trim();
         let (without_attributes, attributes) = take_trailing_attributes(remainder);
         ArchiveDeclaration {
+            range: line_range(line),
             name: (!without_attributes.is_empty()).then(|| without_attributes.to_owned()),
             attributes,
             body: self.parse_body(2),
@@ -330,6 +360,7 @@ impl<'a> Parser<'a> {
         let marker_len = text.split_whitespace().next().map_or(text.len(), str::len);
         let (attributes, _) = take_leading_attributes(text[marker_len..].trim());
         BodyStatement::VersionCondition(VersionCondition {
+            range: line_range(line),
             kind,
             version,
             version_end,
@@ -342,7 +373,7 @@ impl<'a> Parser<'a> {
     fn parse_if(&mut self, indent: usize) -> IfStatement {
         let line = self.take();
         let (text, trailing_comment) = split_comment(line.text);
-        let condition = parse_expression(text["if".len()..].trim());
+        let condition = self.expression(text["if".len()..].trim(), line.number);
         let body = self.parse_body(indent + 2);
         let mut else_ifs = Vec::new();
         let mut else_clause = None;
@@ -356,7 +387,8 @@ impl<'a> Parser<'a> {
                 let clause_line = self.take();
                 let (clause_text, comment) = split_comment(clause_line.text);
                 else_ifs.push(ElseIfClause {
-                    condition: parse_expression(clause_text["else if".len()..].trim()),
+                    condition: self
+                        .expression(clause_text["else if".len()..].trim(), clause_line.number),
                     body: self.parse_body(indent + 2),
                     trailing_comment: comment,
                 });
@@ -385,7 +417,7 @@ impl<'a> Parser<'a> {
         let line = self.take();
         let (text, trailing_comment) = split_comment(line.text);
         LoopStatement {
-            count_expression: parse_expression(text["loop".len()..].trim()),
+            count_expression: self.expression(text["loop".len()..].trim(), line.number),
             body: self.parse_body(indent + 2),
             trailing_comment,
         }
@@ -395,7 +427,7 @@ impl<'a> Parser<'a> {
         let line = self.take();
         let (text, trailing_comment) = split_comment(line.text);
         WhileStatement {
-            condition: parse_expression(text["while".len()..].trim()),
+            condition: self.expression(text["while".len()..].trim(), line.number),
             body: self.parse_body(indent + 2),
             trailing_comment,
         }
@@ -429,7 +461,7 @@ impl<'a> Parser<'a> {
                 let case_line = self.take();
                 let (case_text, comment) = split_comment(case_line.text);
                 cases.push(SwitchCase {
-                    value: parse_expression(case_text["case".len()..].trim()),
+                    value: self.expression(case_text["case".len()..].trim(), case_line.number),
                     body: self.parse_body(indent + 4),
                     trailing_comment: comment,
                 });
@@ -445,7 +477,7 @@ impl<'a> Parser<'a> {
             }
         }
         SwitchStatement {
-            expression: parse_expression(text["switch".len()..].trim()),
+            expression: self.expression(text["switch".len()..].trim(), line.number),
             cases,
             default,
             trailing_comment,
@@ -467,8 +499,13 @@ impl<'a> Parser<'a> {
         let (text, trailing_comment) = split_comment(line.text);
         let remainder = text[keyword.len()..].trim();
         let (expr_text, attributes) = take_trailing_attributes(remainder);
+        let (expr_text, attributes) = if expr_text.is_empty() {
+            (remainder, None)
+        } else {
+            (expr_text, attributes)
+        };
         ExpressionStatement {
-            expression: parse_expression(expr_text),
+            expression: self.expression(expr_text, line.number),
             attributes,
             trailing_comment,
         }
@@ -477,35 +514,196 @@ impl<'a> Parser<'a> {
     fn parse_field_or_assignment(&mut self) -> BodyStatement {
         let line = self.take();
         let (text, trailing_comment) = split_comment(line.text);
-        if let Some((left, right)) = text.split_once('=') {
+        if let Some((left, right)) = split_assignment(text) {
             let left = left.trim();
-            if !left.contains(char::is_whitespace) && !is_special_keyword(left) {
+            if is_identifier(left) && !is_data_type(left) {
                 return BodyStatement::Assignment(ComputedAssignment {
+                    range: line_range(line),
                     target_name: left.to_owned(),
-                    expression: parse_expression(right.trim()),
+                    expression: self.expression(right.trim(), line.number),
                     trailing_comment,
                 });
             }
         }
 
         let (without_attributes, attributes) = take_trailing_attributes(text);
-        let (declaration, default_value) = without_attributes
-            .split_once('=')
-            .map(|(declaration, value)| (declaration.trim(), Some(parse_expression(value.trim()))))
+        let (declaration, default_value) = split_assignment(without_attributes)
+            .map(|(declaration, value)| {
+                (
+                    declaration.trim(),
+                    Some(self.expression(value.trim(), line.number)),
+                )
+            })
             .unwrap_or((without_attributes, None));
         let (type_text, remainder) = split_type_and_remainder(declaration);
         let name = remainder.split_whitespace().next().map(str::to_owned);
         if type_text.is_empty() {
             self.error(line.number, "Expected a field declaration");
         }
+        if !remainder.is_empty() && !is_identifier(remainder) {
+            self.error(line.number, "Unexpected tokens after field name");
+        }
         BodyStatement::Field(FieldDeclaration {
+            range: line_range(line),
             ty: parse_type(type_text),
             name,
             default_value,
+            default_value_source: split_assignment(without_attributes)
+                .map(|(_, value)| value.trim().to_owned()),
             attributes,
             trailing_comment,
             is_special_keyword: is_special_keyword(type_text),
         })
+    }
+
+    fn parse_constructor(&mut self) -> ConstructorDeclaration {
+        let line = self.take();
+        let (text, trailing_comment) = split_comment(line.text);
+        if text != "constructor" {
+            self.error(
+                line.number,
+                "The constructor header takes no arguments or attributes",
+            );
+        }
+        let body = self.parse_body(2);
+        self.validate_restricted_body(&body, false, line.number);
+        ConstructorDeclaration {
+            body,
+            trailing_comment,
+            range: line_range(line),
+        }
+    }
+
+    fn parse_property(&mut self) -> PropertyDeclaration {
+        let line = self.take();
+        let (text, trailing_comment) = split_comment(line.text);
+        let (type_text, remainder) = split_type_and_remainder(text["property".len()..].trim());
+        if type_text.is_empty()
+            || !type_text
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+            || !is_identifier(remainder)
+            || is_special_keyword(type_text)
+        {
+            self.error(
+                line.number,
+                "Expected 'property type Name' without defaults, attributes, or version qualifiers",
+            );
+        }
+        let mut property = PropertyDeclaration {
+            ty: parse_type(type_text),
+            name: remainder
+                .split_whitespace()
+                .next()
+                .unwrap_or_default()
+                .to_owned(),
+            accessors: Vec::new(),
+            trailing_comment,
+            range: line_range(line),
+        };
+        loop {
+            self.skip_blank();
+            let Some(accessor_line) = self.current() else {
+                break;
+            };
+            if accessor_line.indent < 2 {
+                break;
+            }
+            let accessor_line = self.take();
+            if accessor_line.indent != 2 {
+                self.error(
+                    accessor_line.number,
+                    "Property accessors must be indented by two spaces",
+                );
+                continue;
+            }
+            if let Some(comment) = parse_standalone_comment(accessor_line.text) {
+                property.accessors.push(PropertyAccessor::Comment(comment));
+                continue;
+            }
+            let (accessor_text, comment) = split_comment(accessor_line.text);
+            if starts_keyword(accessor_text, "get") || accessor_text.starts_with("get=") {
+                if property.getter().is_some() {
+                    self.error(accessor_line.number, "Duplicate getter");
+                }
+                let remainder = accessor_text["get".len()..].trim();
+                let Some(expression) = remainder.strip_prefix('=') else {
+                    self.error(accessor_line.number, "Expected 'get = expression'");
+                    continue;
+                };
+                property
+                    .accessors
+                    .push(PropertyAccessor::Get(GetterAccessor {
+                        expression: self.expression(expression.trim(), accessor_line.number),
+                        trailing_comment: comment,
+                    }));
+            } else if accessor_text == "set" {
+                if property.setter().is_some() {
+                    self.error(accessor_line.number, "Duplicate setter");
+                }
+                let body = self.parse_body(4);
+                if !body.iter().any(|s| !matches!(s, BodyStatement::Comment(_))) {
+                    self.error(accessor_line.number, "A setter requires a non-empty body");
+                }
+                self.validate_restricted_body(&body, true, accessor_line.number);
+                property
+                    .accessors
+                    .push(PropertyAccessor::Set(SetterAccessor {
+                        body,
+                        trailing_comment: comment,
+                    }));
+            } else {
+                self.error(accessor_line.number, "Expected 'get = expression' or 'set'");
+            }
+        }
+        if property.getter().is_none() && property.setter().is_none() {
+            self.error(line.number, "A property requires at least one accessor");
+        }
+        property
+    }
+
+    fn validate_restricted_body(&mut self, body: &[BodyStatement], setter: bool, line: usize) {
+        for statement in body {
+            match statement {
+                BodyStatement::Comment(_) | BodyStatement::Assignment(_) => {}
+                BodyStatement::If(branch) if setter => {
+                    self.validate_restricted_body(&branch.body, true, line);
+                    for clause in &branch.else_ifs {
+                        self.validate_restricted_body(&clause.body, true, line);
+                    }
+                    if let Some(clause) = &branch.else_clause {
+                        self.validate_restricted_body(&clause.body, true, line);
+                    }
+                }
+                BodyStatement::Switch(selection) if setter => {
+                    for clause in &selection.cases {
+                        self.validate_restricted_body(&clause.body, true, line);
+                    }
+                    if let Some(clause) = &selection.default {
+                        self.validate_restricted_body(&clause.body, true, line);
+                    }
+                }
+                _ => self.error(
+                    line,
+                    if setter {
+                        "Setters allow only assignments, if, switch, and comments"
+                    } else {
+                        "Constructors allow only assignments and comments"
+                    },
+                ),
+            }
+        }
+    }
+
+    fn expression(&mut self, text: &str, line: usize) -> Expression {
+        let (expression, diagnostics) = parse_expression_checked(text);
+        self.diagnostics
+            .extend(diagnostics.into_iter().map(|mut d| {
+                d.position.line += line - 1;
+                d
+            }));
+        expression
     }
 
     fn current(&self) -> Option<Line<'a>> {
@@ -545,6 +743,74 @@ fn is_hex(text: &str) -> bool {
 
 fn is_special_keyword(text: &str) -> bool {
     matches!(text, "version" | "versionb" | "base")
+}
+
+fn line_range(line: Line<'_>) -> SourceRange {
+    SourceRange {
+        start: SourcePosition::new(line.number, line.indent + 1),
+        end: SourcePosition::new(line.number, line.indent + line.text.chars().count() + 1),
+    }
+}
+
+fn is_identifier(text: &str) -> bool {
+    let mut chars = text.chars();
+    chars
+        .next()
+        .is_some_and(|c| c == '_' || c.is_ascii_alphabetic())
+        && chars.all(|c| c == '_' || c.is_ascii_alphanumeric())
+}
+
+fn is_data_type(text: &str) -> bool {
+    is_special_keyword(text)
+        || matches!(
+            text,
+            "bool"
+                | "byte"
+                | "sbyte"
+                | "short"
+                | "ushort"
+                | "int"
+                | "uint"
+                | "long"
+                | "ulong"
+                | "float"
+                | "double"
+                | "string"
+                | "id"
+                | "ident"
+                | "vec2"
+                | "vec3"
+                | "vec4"
+                | "int2"
+                | "int3"
+                | "int4"
+                | "byte3"
+                | "iso4"
+                | "mat3"
+                | "mat4"
+                | "quat"
+                | "transquat"
+                | "timeint"
+                | "timefloat"
+        )
+}
+
+fn split_assignment(text: &str) -> Option<(&str, &str)> {
+    let mut depth = 0;
+    for token in Lexer::new(text).tokenize() {
+        match token.kind {
+            TokenKind::OpenParen | TokenKind::OpenBracket => depth += 1,
+            TokenKind::CloseParen | TokenKind::CloseBracket => depth -= 1,
+            TokenKind::Equals if depth == 0 => {
+                return Some((
+                    &text[..token.source_offset],
+                    &text[token.source_offset + 1..],
+                ));
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn split_type_and_remainder(declaration: &str) -> (&str, &str) {
@@ -616,10 +882,12 @@ fn parse_type(text: &str) -> TypeReference {
     }
     let mut array_dimensions = 0;
     let mut fixed_array_count = None;
+    let mut array_counts = Vec::new();
     while let Some(array) = remainder.strip_prefix('[') {
         let Some(end) = array.find(']') else { break };
         let count = array[..end].trim();
         array_dimensions += 1;
+        array_counts.push((!count.is_empty()).then(|| count.to_owned()));
         if !count.is_empty() && fixed_array_count.is_none() {
             fixed_array_count = Some(count.to_owned());
         }
@@ -632,36 +900,30 @@ fn parse_type(text: &str) -> TypeReference {
         is_nullable,
         array_dimensions,
         fixed_array_count,
+        array_counts,
     }
 }
 
 fn split_comment(text: &str) -> (&str, Option<Comment>) {
-    let mut quoted = false;
-    let bytes = text.as_bytes();
-    let mut index = 0;
-    while index < bytes.len() {
-        if bytes[index] == b'"' && (index == 0 || bytes[index - 1] != b'\\') {
-            quoted = !quoted;
-        }
-        if !quoted && bytes[index] == b'#' {
-            return (
-                text[..index].trim_end(),
-                Some(Comment {
-                    text: text[index + 1..].trim_start().to_owned(),
-                    style: CommentStyle::Hash,
-                }),
-            );
-        }
-        if !quoted && index + 1 < bytes.len() && &bytes[index..index + 2] == b"//" {
-            return (
-                text[..index].trim_end(),
-                Some(Comment {
-                    text: text[index + 2..].trim_start().to_owned(),
-                    style: CommentStyle::DoubleSlash,
-                }),
-            );
-        }
-        index += 1;
+    if let Some(token) = Lexer::new(text)
+        .tokenize()
+        .into_iter()
+        .find(|t| t.kind == TokenKind::Comment)
+    {
+        let hash = token.text.starts_with('#');
+        return (
+            text[..token.source_offset].trim_end(),
+            Some(Comment {
+                text: token.text[if hash { 1 } else { 2 }..]
+                    .trim_start()
+                    .to_owned(),
+                style: if hash {
+                    CommentStyle::Hash
+                } else {
+                    CommentStyle::DoubleSlash
+                },
+            }),
+        );
     }
     (text.trim_end(), None)
 }
@@ -704,9 +966,29 @@ fn take_trailing_attributes(text: &str) -> (&str, Option<AttributeList>) {
     if !text.ends_with(')') {
         return (text, None);
     }
-    let Some(open) = text.rfind('(') else {
+    let mut depth = 0;
+    let mut open = None;
+    for token in Lexer::new(text).tokenize() {
+        match token.kind {
+            TokenKind::OpenParen => {
+                if depth == 0 {
+                    open = Some(token.source_offset);
+                }
+                depth += 1;
+            }
+            TokenKind::CloseParen => depth -= 1,
+            _ => {}
+        }
+    }
+    let Some(open) = open.filter(|_| depth == 0) else {
         return (text, None);
     };
+    if text[..open]
+        .trim_end()
+        .ends_with(['=', '+', '-', '*', '/', '&', '|', '^', '!', '~', '<', '>'])
+    {
+        return (text, None);
+    }
     let inside = &text[open + 1..text.len() - 1];
     if inside.contains(['=', '&', '|', '!', '<', '>']) {
         return (text, None);

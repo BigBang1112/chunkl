@@ -1,0 +1,62 @@
+TestClass 0x01000000
+
+constructor // Initial values.
+  IsGhost = true
+  Count = 4
+
+property bool IsGhost
+  get = (Flags & (1 << 17)) != 0
+  # Update only the ghost bit.
+  set
+    if value
+      Flags = Flags | (1 << 17)
+    else
+      Flags = Flags & ~(1 << 17)
+
+archive
+  version = 2
+  int First = Later + 1
+  string Name = empty
+  short Flags = 0
+  if (Name is not (null or empty)) and IsGhost
+    string Description
+
+0x001
+  version
+  int Flags = 0
+  int Count = 99
+  int Later = 1
+  int?[Count][] Values
+  int[][3] Matrix
+  if Name is null or empty
+    int Data
+  if IsGhost or ForceReload
+    int ReloadVersion
+  bool ForceReload
+  int = 1
+
+property int AdjustedCount // A read-only view.
+  get = Count + 1
+
+property int WriteOnly
+  set
+    switch value
+      case 0
+        Count = 0
+      default
+        Count = value
+
+archive Key
+  timefloat Time
+  v1+
+    float Opacity = 1
+
+archive Versioned
+  versionb
+  v1+
+    int Data
+
+archive Derived (inherits: Versioned)
+  base
+  v2+
+    int Extra

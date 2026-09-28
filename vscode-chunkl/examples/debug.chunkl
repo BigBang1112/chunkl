@@ -1,5 +1,18 @@
 CDebugSample 0x01000000
 
+constructor
+  Width = 4
+  Height = 4
+  IsNorth = true
+
+property bool IsNorth
+  get = Facing == Direction::North
+  set
+    if value
+      Facing = Direction::North
+    else
+      Facing = Direction::South
+
 0x001
   int Width
   int Height
@@ -11,6 +24,13 @@ CDebugSample 0x01000000
   while HasNext != 0 // Read until the terminating flag.
     int ItemType
     byte HasNext
+
+archive Key
+  string Name = empty
+  if Name is null or empty
+    int Unknown
+  v1+
+    float Opacity = 1
 
 enum Direction
   North

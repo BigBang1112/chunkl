@@ -81,3 +81,35 @@ public sealed class TupleExpression : Expression
 {
     public required List<Expression> Elements { get; set; }
 }
+
+public sealed class PatternTestExpression : Expression
+{
+    public required Expression Value { get; set; }
+    public required Pattern Pattern { get; set; }
+}
+
+public abstract class Pattern;
+
+public sealed class ConstantPattern : Pattern
+{
+    public required Expression Value { get; set; }
+}
+
+public sealed class NotPattern : Pattern
+{
+    public required Pattern Operand { get; set; }
+}
+
+public enum PatternOperator { And, Or }
+
+public sealed class BinaryPattern : Pattern
+{
+    public required Pattern Left { get; set; }
+    public required PatternOperator Operator { get; set; }
+    public required Pattern Right { get; set; }
+}
+
+public sealed class ParenthesizedPattern : Pattern
+{
+    public required Pattern Inner { get; set; }
+}

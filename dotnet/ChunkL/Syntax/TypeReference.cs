@@ -1,4 +1,4 @@
-﻿namespace ChunkL.Syntax;
+namespace ChunkL.Syntax;
 
 public sealed class TypeReference : SyntaxNode
 {
@@ -8,4 +8,5 @@ public sealed class TypeReference : SyntaxNode
     public bool IsNullable { get; set; }
     public int ArrayDimensions { get; set; }
     public string? FixedArrayCount { get; set; }
+    public List<string?> ArrayCounts { get; set; } = [];
 }

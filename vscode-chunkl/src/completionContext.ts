@@ -10,6 +10,9 @@ export function getCompletionContext(textBeforeCursor: string): CompletionContex
   }
 
   const scope = getCompletionScope(textBeforeCursor);
+  if (/^property\s+[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*<[\w.]*$/.test(textBeforeCursor)) {
+    return { kind: "cast" };
+  }
   if (scope !== "field") {
     return { kind: scope };
   }
@@ -73,7 +76,7 @@ function isInsideAttributeList(text: string): boolean {
 function isInsideArrayCount(text: string): boolean {
   const open = text.lastIndexOf("[");
   return open > text.lastIndexOf("]")
-    && /^\s+[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:<[^>]+>)?[*?]?(?:\[[^\]]*\])*\[$/.test(text.slice(0, open + 1));
+    && /^\s+[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:<[^>]+>)?\*?\??(?:\[[^\]]*\])*\[$/.test(text.slice(0, open + 1));
 }
 
 function isInsideCommentOrString(text: string): boolean {

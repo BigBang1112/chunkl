@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { getCompletionContext } from "./completionContext";
-import { collectLocalEnums, collectVisibleFields } from "./documentSymbols";
+import { collectLocalEnums, collectVisibleFields, getBodyContext } from "./documentSymbols";
 import {
   ATTRIBUTE_KEYWORDS,
   CONTROL_KEYWORDS,
@@ -39,7 +39,8 @@ export class ChunkLCompletionProvider implements vscode.CompletionItemProvider {
       const source = document.getText();
       return [
         ...collectVisibleFields(source, position.line).map((field) =>
-          completionItem(field.name, vscode.CompletionItemKind.Field, `${field.type} field`)
+          completionItem(field.name, field.kind === "property" ? vscode.CompletionItemKind.Property : vscode.CompletionItemKind.Field,
+            `${field.type} ${field.kind ?? "field"}`)
         ),
         ...collectLocalEnums(source).flatMap((type) => [
           completionItem(type.name, vscode.CompletionItemKind.Enum, `Local ${type.kind}`),
@@ -50,6 +51,31 @@ export class ChunkLCompletionProvider implements vscode.CompletionItemProvider {
         ...["true", "false", "null", "empty"].map((value) =>
           completionItem(value, vscode.CompletionItemKind.Value, "ChunkL value")
         ),
+        ...["is", "and", "or", ...(/\bis\b/.test(textBeforeCursor) ? ["not"] : [])].map((keyword) =>
+          keywordCompletion(keyword, "ChunkL expression operator")
+        ),
+      ];
+    }
+
+    const body = getBodyContext(document.getText(), position.line);
+    if (context.kind === "field" && body.kind === "property" && /^ {2}\S*$|^ {2}$/.test(textBeforeCursor)) {
+      return [
+        ...["get", "set"].map((keyword) => keywordCompletion(keyword, "Property accessor")),
+        ...SNIPPETS.filter((snippet) => snippet.scope === "accessor").map(snippetCompletion),
+      ];
+    }
+    if (context.kind === "field" && (body.kind === "constructor" || (body.kind === "property" && body.inSetter))) {
+      const targets = collectVisibleFields(document.getText(), position.line, "write").map((field) =>
+        completionItem(field.name, field.kind === "property" ? vscode.CompletionItemKind.Property : vscode.CompletionItemKind.Field,
+          `${field.type} assignment target`)
+      );
+      if (body.kind === "constructor") { return targets; }
+      const keywords = ["if", "else", "else if", "switch", "case", "default"];
+      return [
+        ...targets,
+        ...keywords.map((keyword) => keywordCompletion(keyword, "Property setter control flow")),
+        ...SNIPPETS.filter((snippet) => snippet.scope === "field" && ["if", "if-else", "else if", "switch"].includes(snippet.label))
+          .map(snippetCompletion),
       ];
     }
 

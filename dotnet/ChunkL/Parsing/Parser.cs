@@ -1,4 +1,4 @@
-﻿using ChunkL.Diagnostics;
+using ChunkL.Diagnostics;
 using ChunkL.Lexing;
 using ChunkL.Syntax;
 
@@ -13,6 +13,13 @@ public sealed class Parser
     [
         "version", "versionb", "base", "return", "throw",
         "block", "switch", "skip", "assert", "loop"
+    ];
+
+    private static readonly HashSet<string> DataTypes =
+    [
+        "bool", "byte", "sbyte", "short", "ushort", "int", "uint", "long", "ulong", "float", "double",
+        "string", "id", "ident", "vec2", "vec3", "vec4", "int2", "int3", "int4", "byte3", "iso4",
+        "mat3", "mat4", "quat", "transquat", "timeint", "timefloat"
     ];
 
     private readonly List<Token> _tokens;
@@ -71,6 +78,12 @@ public sealed class Parser
 
     private Comment? TryParseTrailingComment()
     {
+        if (Current.Kind is not (TokenKind.Comment or TokenKind.Newline or TokenKind.EndOfFile))
+        {
+            _diagnostics.ReportError($"Unexpected token '{Current.Text}' after statement", Current.Position);
+            while (Current.Kind is not (TokenKind.Comment or TokenKind.Newline or TokenKind.EndOfFile))
+                Advance();
+        }
         if (Current.Kind == TokenKind.Comment)
         {
             var token = Advance();
@@ -116,18 +129,39 @@ public sealed class Parser
             if (Current.Kind == TokenKind.HexLiteral && GetIndent() == 0)
             {
                 file.Chunks.Add(ParseChunkDeclaration());
+                file.DeclarationOrder.Add(file.Chunks[file.Chunks.Count - 1]);
             }
             else if (Current.Kind == TokenKind.Identifier && Current.Text == "archive" && GetIndent() == 0)
             {
                 file.Archives.Add(ParseArchiveDeclaration());
+                file.DeclarationOrder.Add(file.Archives[file.Archives.Count - 1]);
             }
             else if (Current.Kind == TokenKind.Identifier && Current.Text == "enum" && GetIndent() == 0)
             {
                 file.Enums.Add(ParseEnumDeclaration());
+                file.DeclarationOrder.Add(file.Enums[file.Enums.Count - 1]);
             }
             else if (Current.Kind == TokenKind.Identifier && Current.Text == "flags" && GetIndent() == 0)
             {
                 file.Flags.Add(ParseFlagsDeclaration());
+                file.DeclarationOrder.Add(file.Flags[file.Flags.Count - 1]);
+            }
+            else if (Current.Kind == TokenKind.Identifier && Current.Text == "property" && GetIndent() == 0)
+            {
+                file.Properties.Add(ParsePropertyDeclaration());
+                file.DeclarationOrder.Add(file.Properties[file.Properties.Count - 1]);
+            }
+            else if (Current.Kind == TokenKind.Identifier && Current.Text == "constructor" && GetIndent() == 0)
+            {
+                var token = Current;
+                var constructor = ParseConstructorDeclaration();
+                if (file.Constructor != null)
+                    _diagnostics.ReportError("At most one constructor is allowed", token.Position);
+                else
+                {
+                    file.Constructor = constructor;
+                    file.DeclarationOrder.Add(constructor);
+                }
             }
             else if (Current.Kind == TokenKind.Comment && GetIndent() == 0)
             {
@@ -137,6 +171,7 @@ public sealed class Parser
                     ? commentToken.Text.Substring(2).TrimStart()
                     : commentToken.Text.Substring(1).TrimStart();
                 file.TopLevelComments.Add(new Comment { Text = text, Style = style, Position = MakeRange(commentToken, commentToken) });
+                file.DeclarationOrder.Add(file.TopLevelComments[file.TopLevelComments.Count - 1]);
                 Advance();
                 SkipNewlines();
             }
@@ -149,6 +184,110 @@ public sealed class Parser
 
         file.Position = MakeRange(firstToken);
         return file;
+    }
+
+    private ConstructorDeclaration ParseConstructorDeclaration()
+    {
+        var start = Advance();
+        var comment = TryParseTrailingComment();
+        SkipNewlines();
+        var body = ParseRestrictedBody(2, false);
+        return new ConstructorDeclaration { Body = body, TrailingComment = comment, Position = MakeRange(start) };
+    }
+
+    private PropertyDeclaration ParsePropertyDeclaration()
+    {
+        var start = Advance();
+        var type = ParseTypeReference();
+        var name = Expect(TokenKind.Identifier).Text;
+        var comment = TryParseTrailingComment();
+        var property = new PropertyDeclaration { Type = type, Name = name, TrailingComment = comment };
+        while (true)
+        {
+            SkipNewlines();
+            if (Current.Kind == TokenKind.EndOfFile || GetIndent() < 2) break;
+            if (GetIndent() != 2)
+            {
+                _diagnostics.ReportError("Property accessors must be indented by two spaces", Current.Position);
+                SkipToNextLine();
+                continue;
+            }
+            if (Current.Kind == TokenKind.Comment)
+            {
+                property.Accessors.Add((Comment)ParseStatement(2)!);
+                continue;
+            }
+            var accessor = Advance();
+            if (accessor.Text == "get")
+            {
+                if (property.Getter != null)
+                    _diagnostics.ReportError("Duplicate getter", accessor.Position);
+                Expect(TokenKind.Equals);
+                var expression = ParseExpression();
+                var trailingComment = TryParseTrailingComment();
+                property.Accessors.Add(new GetterAccessor
+                {
+                    Expression = expression, TrailingComment = trailingComment, Position = MakeRange(accessor)
+                });
+            }
+            else if (accessor.Text == "set")
+            {
+                if (property.Setter != null)
+                    _diagnostics.ReportError("Duplicate setter", accessor.Position);
+                var trailingComment = TryParseTrailingComment();
+                SkipNewlines();
+                var body = ParseRestrictedBody(4, true);
+                if (!body.Any(statement => statement is not Comment))
+                    _diagnostics.ReportError("A setter requires a non-empty body", accessor.Position);
+                property.Accessors.Add(new SetterAccessor
+                {
+                    Body = body, TrailingComment = trailingComment, Position = MakeRange(accessor)
+                });
+            }
+            else
+            {
+                _diagnostics.ReportError("Expected 'get = expression' or 'set'", accessor.Position);
+                SkipToNextLine();
+            }
+        }
+        if (property.Getter == null && property.Setter == null)
+            _diagnostics.ReportError("A property requires at least one accessor", start.Position);
+        if (SpecialKeywords.Contains(type.Name))
+            _diagnostics.ReportError("A property requires a data type", start.Position);
+        property.Position = MakeRange(start);
+        return property;
+    }
+
+    private List<IBodyStatement> ParseRestrictedBody(int indent, bool setter)
+    {
+        var body = ParseBody(indent);
+        ValidateRestrictedBody(body, setter);
+        return body;
+    }
+
+    private void ValidateRestrictedBody(List<IBodyStatement> body, bool setter)
+    {
+        foreach (var statement in body)
+        {
+            switch (statement)
+            {
+                case Comment or ComputedAssignment: break;
+                case IfStatement branch when setter:
+                    ValidateRestrictedBody(branch.Body, true);
+                    foreach (var clause in branch.ElseIfs) ValidateRestrictedBody(clause.Body, true);
+                    if (branch.Else != null) ValidateRestrictedBody(branch.Else.Body, true);
+                    break;
+                case SwitchStatement selection when setter:
+                    foreach (var clause in selection.Cases) ValidateRestrictedBody(clause.Body, true);
+                    if (selection.Default != null) ValidateRestrictedBody(selection.Default.Body, true);
+                    break;
+                default:
+                    _diagnostics.ReportError(setter
+                        ? "Setters allow only assignments, if, switch, and comments"
+                        : "Constructors allow only assignments and comments", ((SyntaxNode)statement).Position.Start);
+                    break;
+            }
+        }
     }
 
     private ClassHeader ParseClassHeader()
@@ -376,6 +515,8 @@ public sealed class Parser
             var indent = GetIndent();
             if (indent < expectedIndent)
                 break;
+            if (indent != expectedIndent)
+                _diagnostics.ReportError($"Expected {expectedIndent} spaces of indentation", Current.Position);
 
             var stmt = ParseStatement(expectedIndent);
             if (stmt != null)
@@ -858,7 +999,7 @@ public sealed class Parser
         var name = Current.Text;
 
         // If it's a known type or special keyword, it's not a computed assignment
-        if (SpecialKeywords.Contains(name))
+        if (SpecialKeywords.Contains(name) || DataTypes.Contains(name))
             return false;
 
         // Look ahead: next meaningful token should be = (but not ==)
@@ -915,6 +1056,7 @@ public sealed class Parser
 
         string? name = null;
         Expression? defaultValue = null;
+        string? defaultValueSource = null;
         AttributeList? attrs = null;
         var isSpecial = SpecialKeywords.Contains(typeRef.Name);
 
@@ -933,7 +1075,9 @@ public sealed class Parser
         if (Current.Kind == TokenKind.Equals)
         {
             Advance(); // skip =
+            var defaultStart = Current.SourceOffset;
             defaultValue = ParseExpressionBeforeAttrs();
+            defaultValueSource = _source.Substring(defaultStart, Current.SourceOffset - defaultStart).Trim();
         }
 
         // Check for attribute list
@@ -951,6 +1095,7 @@ public sealed class Parser
             Type = typeRef,
             Name = name,
             DefaultValue = defaultValue,
+            DefaultValueSource = defaultValueSource,
             Attributes = attrs,
             TrailingComment = comment,
             IsSpecialKeyword = isSpecial,
@@ -966,6 +1111,8 @@ public sealed class Parser
 
     private TypeReference ParseTypeReference()
     {
+        if (Current.Kind != TokenKind.Identifier)
+            _diagnostics.ReportError("Expected a type name", Current.Position);
         // Read the type name - could be a dotted name for cross-file references
         var nameToken = Advance();
         var name = nameToken.Text;
@@ -975,6 +1122,7 @@ public sealed class Parser
         var isNullable = false;
         var arrayDims = 0;
         string? fixedArrayCount = null;
+        var arrayCounts = new List<string?>();
 
         // Check for cast: <TargetType> or <Qualifier.TargetType>
         if (Current.Kind == TokenKind.LessThan)
@@ -1025,6 +1173,7 @@ public sealed class Parser
             Advance(); // [
             if (Current.Kind == TokenKind.CloseBracket)
             {
+                arrayCounts.Add(null);
                 Advance(); // ] â€” dynamic array
             }
             else
@@ -1035,7 +1184,8 @@ public sealed class Parser
                 ParseExpression();
                 var countExpr = _source.Substring(startOffset, Current.SourceOffset - startOffset).Trim();
                 Expect(TokenKind.CloseBracket);
-                fixedArrayCount = countExpr;
+                fixedArrayCount ??= countExpr;
+                arrayCounts.Add(countExpr);
             }
             arrayDims++;
         }
@@ -1047,7 +1197,8 @@ public sealed class Parser
             ChunkPreference = chunkPreference,
             IsNullable = isNullable,
             ArrayDimensions = arrayDims,
-            FixedArrayCount = fixedArrayCount
+            FixedArrayCount = fixedArrayCount,
+            ArrayCounts = arrayCounts
         };
     }
 
@@ -1211,7 +1362,7 @@ public sealed class Parser
     /// </summary>
     private Expression ParseExpression()
     {
-        var parser = new ExpressionParser(_tokens, _pos);
+        var parser = new ExpressionParser(_tokens, _pos, _diagnostics);
         var expr = parser.Parse();
         _pos = parser.Position;
         return expr;
@@ -1223,11 +1374,13 @@ public sealed class Parser
     private Expression ParseExpressionBeforeAttrs()
     {
         if (Current.Kind == TokenKind.Newline || Current.Kind == TokenKind.Comment ||
-            Current.Kind == TokenKind.EndOfFile ||
-            (Current.Kind == TokenKind.OpenParen && LooksLikeAttributeListAhead()))
+            Current.Kind == TokenKind.EndOfFile)
+        {
+            _diagnostics.ReportError("Expected an expression", Current.Position);
             return new IdentifierExpression { Name = "" };
+        }
 
-        var parser = new ExpressionParser(_tokens, _pos);
+        var parser = new ExpressionParser(_tokens, _pos, _diagnostics);
         var expr = parser.Parse();
         _pos = parser.Position;
         return expr;

@@ -7,6 +7,8 @@
     { "include": "#class-header" },
     { "include": "#class-attribute" },
     { "include": "#chunk-header" },
+    { "include": "#constructor-declaration" },
+    { "include": "#property-declaration" },
     { "include": "#archive-declaration" },
     { "include": "#enum-declaration" },
     { "include": "#flags-declaration" },
@@ -19,6 +21,11 @@
     { "include": "#attribute-list" },
     { "include": "#expression" }
   ],
+  "injections": {
+    "L:meta.setter.chunkl - comment - string": {
+      "patterns": [ { "match": "\\bvalue\\b", "name": "variable.parameter.setter.chunkl" } ]
+    }
+  },
   "repository": {
     "comments": {
       "patterns": [
@@ -57,6 +64,46 @@
         { "include": "#attribute-list" },
         { "include": "#version-list" },
         { "include": "#comments" }
+      ]
+    },
+    "constructor-declaration": {
+      "match": "^(constructor)\\b",
+      "captures": {
+        "1": { "name": "keyword.declaration.constructor.chunkl" }
+      }
+    },
+    "property-declaration": {
+      "name": "meta.property.chunkl",
+      "begin": "^(property)\\s+([A-Za-z_][\\w.]*(?:<[^>]+>)?\\*?\\??(?:\\[[^\\]]*\\])*)\\s+([A-Za-z_]\\w*)",
+      "end": "(?=^\\S)",
+      "beginCaptures": {
+        "1": { "name": "keyword.declaration.property.chunkl" },
+        "2": { "name": "storage.type.property.chunkl" },
+        "3": { "name": "variable.other.property.chunkl" }
+      },
+      "patterns": [ { "include": "#comments" }, { "include": "#property-accessor" } ]
+    },
+    "property-accessor": {
+      "patterns": [
+        {
+          "begin": "^( {2})(get)\\s*(=)",
+          "end": "$",
+          "beginCaptures": {
+            "2": { "name": "keyword.declaration.accessor.chunkl" },
+            "3": { "name": "keyword.operator.assignment.chunkl" }
+          },
+          "patterns": [ { "include": "#expression" }, { "include": "#comments" } ]
+        },
+        {
+          "name": "meta.setter.chunkl",
+          "begin": "^( {2})(set)\\s*(?=//|#|$)",
+          "end": "(?=^(?:\\S| {2}\\S))",
+          "beginCaptures": { "2": { "name": "keyword.declaration.accessor.chunkl" } },
+          "patterns": [
+            { "include": "#comments" }, { "include": "#control-flow" },
+            { "include": "#computed-assignment" }, { "include": "#expression" }
+          ]
+        }
       ]
     },
     "archive-declaration": {
@@ -415,6 +462,10 @@
     "expression": {
       "patterns": [
         {
+          "match": "\\b(is|not|and|or)\\b",
+          "name": "keyword.operator.word.chunkl"
+        },
+        {
           "match": "0x[0-9a-fA-F]+",
           "name": "constant.numeric.hex.chunkl"
         },
@@ -447,7 +498,9 @@
           "name": "keyword.operator.chunkl"
         },
         {
-          "match": "\"[^\"]*\"",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [ { "match": "\\\\.", "name": "constant.character.escape.chunkl" } ],
           "name": "string.quoted.double.chunkl"
         }
       ]

@@ -1,4 +1,4 @@
-﻿using ChunkL.Diagnostics;
+using ChunkL.Diagnostics;
 using ChunkL.Lexing;
 using ChunkL.Syntax;
 using ChunkL.Writing;
@@ -68,4 +68,7 @@ public static class ChunkLParser
         var writer = new ChunkLWriter();
         return writer.WriteExpr(expression);
     }
+
+    /// <summary>Resolve stored members, initialization order, and local semantic diagnostics.</summary>
+    public static Semantics.SemanticModel Analyze(ChunkLFile file) => Semantics.SemanticAnalyzer.Analyze(file);
 }

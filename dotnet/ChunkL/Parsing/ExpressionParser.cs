@@ -1,5 +1,6 @@
 using ChunkL.Lexing;
 using ChunkL.Syntax;
+using ChunkL.Diagnostics;
 
 namespace ChunkL.Parsing;
 
@@ -7,11 +8,13 @@ internal sealed class ExpressionParser
 {
     private readonly List<Token> _tokens;
     private int _pos;
+    private readonly DiagnosticBag? _diagnostics;
 
-    public ExpressionParser(List<Token> tokens, int startPos)
+    public ExpressionParser(List<Token> tokens, int startPos, DiagnosticBag? diagnostics = null)
     {
         _tokens = tokens;
         _pos = startPos;
+        _diagnostics = diagnostics;
     }
 
     public int Position => _pos;
@@ -35,7 +38,7 @@ internal sealed class ExpressionParser
     private Expression ParseLogicalOr()
     {
         var left = ParseLogicalAnd();
-        while (!AtEnd && Current.Kind == TokenKind.PipePipe)
+        while (!AtEnd && (Current.Kind == TokenKind.PipePipe || IsKeyword("or")))
         {
             Advance();
             var right = ParseLogicalAnd();
@@ -47,7 +50,7 @@ internal sealed class ExpressionParser
     private Expression ParseLogicalAnd()
     {
         var left = ParseEquality();
-        while (!AtEnd && Current.Kind == TokenKind.AmpersandAmpersand)
+        while (!AtEnd && (Current.Kind == TokenKind.AmpersandAmpersand || IsKeyword("and")))
         {
             Advance();
             var right = ParseEquality();
@@ -80,6 +83,12 @@ internal sealed class ExpressionParser
         var left = ParseBitwiseOr();
         while (!AtEnd)
         {
+            if (IsKeyword("is"))
+            {
+                Advance();
+                left = new PatternTestExpression { Value = left, Pattern = ParsePatternOr() };
+                continue;
+            }
             BinaryOperator op;
             if (Current.Kind == TokenKind.LessThan)
                 op = BinaryOperator.LessThan;
@@ -96,6 +105,68 @@ internal sealed class ExpressionParser
             left = new BinaryExpression { Left = left, Operator = op, Right = right };
         }
         return left;
+    }
+
+    private bool IsKeyword(string keyword) => Current.Kind == TokenKind.Identifier && Current.Text == keyword;
+
+    private bool CanStartPattern(int offset)
+    {
+        var token = Peek(offset);
+        if (token.Kind is TokenKind.IntLiteral or TokenKind.HexLiteral or TokenKind.StringLiteral)
+            return true;
+        if (token.Kind == TokenKind.OpenParen || (token.Kind == TokenKind.Identifier && token.Text == "not"))
+            return offset < _tokens.Count - _pos && CanStartPattern(offset + 1);
+        return token.Kind == TokenKind.Identifier &&
+            (token.Text is "true" or "false" or "null" or "empty" || Peek(offset + 1).Kind == TokenKind.ColonColon);
+    }
+
+    private Pattern ParsePatternOr()
+    {
+        var left = ParsePatternAnd();
+        while (IsKeyword("or") && CanStartPattern(1))
+        {
+            Advance();
+            left = new BinaryPattern { Left = left, Operator = PatternOperator.Or, Right = ParsePatternAnd() };
+        }
+        return left;
+    }
+
+    private Pattern ParsePatternAnd()
+    {
+        var left = ParsePatternNot();
+        while (IsKeyword("and") && CanStartPattern(1))
+        {
+            Advance();
+            left = new BinaryPattern { Left = left, Operator = PatternOperator.And, Right = ParsePatternNot() };
+        }
+        return left;
+    }
+
+    private Pattern ParsePatternNot()
+    {
+        if (IsKeyword("not"))
+        {
+            Advance();
+            return new NotPattern { Operand = ParsePatternNot() };
+        }
+        if (Current.Kind == TokenKind.OpenParen)
+        {
+            Advance();
+            var inner = ParsePatternOr();
+            ExpectCloseParen();
+            return new ParenthesizedPattern { Inner = inner };
+        }
+        if (!CanStartPattern(0))
+            _diagnostics?.ReportError("Expected a literal or scoped identifier pattern", Current.Position);
+        return new ConstantPattern { Value = ParsePrimary() };
+    }
+
+    private void ExpectCloseParen()
+    {
+        if (Current.Kind == TokenKind.CloseParen)
+            Advance();
+        else
+            _diagnostics?.ReportError("Expected ')'", Current.Position);
     }
 
     private Expression ParseBitwiseOr()
@@ -229,10 +300,10 @@ internal sealed class ExpressionParser
                         Advance();
                         elements.Add(ParseLogicalOr());
                     }
-                    if (Current.Kind == TokenKind.CloseParen) Advance();
+                    ExpectCloseParen();
                     return new TupleExpression { Elements = elements };
                 }
-                if (Current.Kind == TokenKind.CloseParen) Advance();
+                ExpectCloseParen();
                 return new ParenthesizedExpression { Inner = first };
             }
             case TokenKind.IntLiteral:
@@ -251,6 +322,10 @@ internal sealed class ExpressionParser
             case TokenKind.StringLiteral:
             {
                 var token = Advance();
+                var slashCount = 0;
+                for (var i = token.Text.Length - 2; i >= 0 && token.Text[i] == '\\'; i--) slashCount++;
+                if (token.Text.Length < 2 || !token.Text.EndsWith("\"", StringComparison.Ordinal) || slashCount % 2 != 0)
+                    _diagnostics?.ReportError("Unterminated string literal", token.Position);
                 return new LiteralExpression { Kind = LiteralKind.String, Value = token.Text };
             }
             case TokenKind.Identifier:
@@ -268,8 +343,9 @@ internal sealed class ExpressionParser
             }
             default:
             {
-                // Consume to avoid infinite loop
-                var token = Advance();
+                var token = Current;
+                _diagnostics?.ReportError($"Expected an expression, got '{token.Text}'", token.Position);
+                if (!AtEnd) Advance();
                 return new IdentifierExpression { Name = token.Text };
             }
         }
@@ -278,6 +354,8 @@ internal sealed class ExpressionParser
     private ScopedIdentifierExpression ParseScopedIdentifier(string qualifier)
     {
         Advance(); // ::
+        if (Current.Kind != TokenKind.Identifier)
+            _diagnostics?.ReportError("Expected an enum or flags member after '::'", Current.Position);
         var member = Current.Kind == TokenKind.Identifier ? Advance().Text : "";
         return new ScopedIdentifierExpression { Qualifier = qualifier, Name = member };
     }

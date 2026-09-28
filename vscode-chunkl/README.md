@@ -6,15 +6,16 @@ See the [language specification](../SPECIFICATION.md) for the full syntax.
 
 ## Features
 
-- A TextMate grammar highlights class headers, chunk offsets, attributes, version qualifiers, field types, control flow, and comments.
-- Completions suggest declarations, control flow keywords, attribute names, and literal values (`true`, `false`, `null`, and `empty`).
-- Local enum and flags names are suggested in casts and expressions. Values are suggested as `Enum::Value`, or by member name after `Enum::`. Expressions also suggest previously declared fields in the current chunk or archive.
+- A TextMate grammar highlights class headers, chunk offsets, attributes, version qualifiers, field types, constructors, properties, accessors, control flow, patterns, and comments.
+- Completions suggest declarations, control flow keywords, attribute names, expression operators (`is`, `not`, `and`, and `or`), and literal values (`true`, `false`, `null`, and `empty`).
+- Local enum and flags names are suggested in casts and expressions. Values are suggested as `Enum::Value`, or by member name after `Enum::`. Class fields and readable properties are available across chunks, the self archive, constructors, and accessors, including forward declarations. Named archives keep their own field scope.
+- Constructor and setter assignment targets include writable members. Property bodies suggest `get` and `set`; setters also suggest the incoming `value` and supported control flow. Archive expressions suggest `v`, while versioned chunk expressions suggest `Version`.
 - Basic keywords such as `archive`, `enum`, `if`, `while`, and `version` complete as plain text. Entries labeled `(snippet)` insert a declaration or block with editable placeholders.
 - Language configuration sets `//` as the line comment and closes brackets and quotes automatically. The grammar also highlights `#` comments.
 
 Completions use the current line and a lightweight scan of the open file. The extension does not report diagnostics.
 
-The grammar and snippets support expression based fixed array counts and `while` blocks.
+The grammar and snippets support expression based fixed array counts, `while` blocks, constructors, and computed properties. Repeated field names appear once in completions, with compatible integer wire types resolved to a common storage type.
 
 ## Debugging
 

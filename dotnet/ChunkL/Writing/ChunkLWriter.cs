@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using ChunkL.Syntax;
 
 namespace ChunkL.Writing;
@@ -32,37 +32,19 @@ public sealed class ChunkLWriter
             }
         }
 
-        var wroteDeclaration = file.ClassAttributes.Count > 0;
-
-        foreach (var chunk in file.Chunks)
+        foreach (var declaration in file.GetDeclarationsInSourceOrder())
         {
-            _sb.Append(_options.NewLine);
-            WriteChunkDeclaration(chunk);
-            wroteDeclaration = true;
-        }
-
-        foreach (var archive in file.Archives)
-        {
-            if (wroteDeclaration)
-                _sb.Append(_options.NewLine);
-            WriteArchiveDeclaration(archive);
-            wroteDeclaration = true;
-        }
-
-        foreach (var enumDecl in file.Enums)
-        {
-            if (wroteDeclaration)
-                _sb.Append(_options.NewLine);
-            WriteEnumDeclaration(enumDecl);
-            wroteDeclaration = true;
-        }
-
-        foreach (var flagsDecl in file.Flags)
-        {
-            if (wroteDeclaration)
-                _sb.Append(_options.NewLine);
-            WriteFlagsDeclaration(flagsDecl);
-            wroteDeclaration = true;
+            if (declaration is not Comment) WriteNewLine();
+            switch (declaration)
+            {
+                case ChunkDeclaration chunk: WriteChunkDeclaration(chunk); break;
+                case ArchiveDeclaration archive: WriteArchiveDeclaration(archive); break;
+                case EnumDeclaration enumDecl: WriteEnumDeclaration(enumDecl); break;
+                case FlagsDeclaration flagsDecl: WriteFlagsDeclaration(flagsDecl); break;
+                case ConstructorDeclaration constructor: WriteConstructorDeclaration(constructor); break;
+                case PropertyDeclaration property: WritePropertyDeclaration(property); break;
+                case Comment comment: WriteStandaloneComment(comment); break;
+            }
         }
 
         return _sb.ToString();
@@ -274,11 +256,14 @@ public sealed class ChunkLWriter
         if (type.IsNullable)
             _sb.Append('?');
 
-        if (type.FixedArrayCount != null)
-            _sb.Append($"[{type.FixedArrayCount}]");
-        // remaining dynamic dimensions
-        for (var i = (type.FixedArrayCount != null ? 1 : 0); i < type.ArrayDimensions; i++)
-            _sb.Append("[]");
+        for (var i = 0; i < type.ArrayDimensions; i++)
+        {
+            var count = type.ArrayCounts.Count == type.ArrayDimensions
+                ? type.ArrayCounts[i] : i == 0 ? type.FixedArrayCount : null;
+            _sb.Append('[');
+            _sb.Append(count);
+            _sb.Append(']');
+        }
     }
 
     private void WriteVersionCondition(VersionCondition vc)
@@ -534,6 +519,51 @@ public sealed class ChunkLWriter
         _indentLevel = 0;
     }
 
+    private void WriteConstructorDeclaration(ConstructorDeclaration constructor)
+    {
+        _sb.Append("constructor");
+        WriteComment(constructor.TrailingComment);
+        WriteNewLine();
+        _indentLevel = 1;
+        WriteBody(constructor.Body);
+        _indentLevel = 0;
+    }
+
+    private void WritePropertyDeclaration(PropertyDeclaration property)
+    {
+        _sb.Append("property ");
+        WriteTypeReference(property.Type);
+        _sb.Append(' ');
+        _sb.Append(property.Name);
+        WriteComment(property.TrailingComment);
+        WriteNewLine();
+        _indentLevel = 1;
+        foreach (var accessor in property.Accessors)
+        {
+            switch (accessor)
+            {
+                case GetterAccessor getter:
+                    WriteIndent();
+                    _sb.Append("get = ");
+                    WriteExpression(getter.Expression);
+                    WriteComment(getter.TrailingComment);
+                    WriteNewLine();
+                    break;
+                case SetterAccessor setter:
+                    WriteIndent();
+                    _sb.Append("set");
+                    WriteComment(setter.TrailingComment);
+                    WriteNewLine();
+                    _indentLevel++;
+                    WriteBody(setter.Body);
+                    _indentLevel--;
+                    break;
+                case Comment comment: WriteStandaloneComment(comment); break;
+            }
+        }
+        _indentLevel = 0;
+    }
+
     private void WriteEnumDeclaration(EnumDeclaration enumDecl)
     {
         _sb.Append("enum ");
@@ -649,6 +679,33 @@ public sealed class ChunkLWriter
                         _sb.Append(", ");
                     WriteExpression(tuple.Elements[i]);
                 }
+                _sb.Append(')');
+                break;
+            case PatternTestExpression test:
+                WriteExpression(test.Value);
+                _sb.Append(" is ");
+                WritePattern(test.Pattern);
+                break;
+        }
+    }
+
+    private void WritePattern(Pattern pattern)
+    {
+        switch (pattern)
+        {
+            case ConstantPattern constant: WriteExpression(constant.Value); break;
+            case NotPattern negated:
+                _sb.Append("not ");
+                WritePattern(negated.Operand);
+                break;
+            case BinaryPattern binary:
+                WritePattern(binary.Left);
+                _sb.Append(binary.Operator == PatternOperator.And ? " and " : " or ");
+                WritePattern(binary.Right);
+                break;
+            case ParenthesizedPattern parenthesized:
+                _sb.Append('(');
+                WritePattern(parenthesized.Inner);
                 _sb.Append(')');
                 break;
         }

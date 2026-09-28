@@ -25,6 +25,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 Use `parse_source` for strings and `parse_reader` for any `std::io::Read`. Check `ParseResult::success()` before using `file`.
 
+The public syntax tree includes constructors, properties with ordered accessors, and `is` patterns. Boolean `and` and `or` parse as logical operators and are written as `&&` and `||`; pattern operators retain their keyword spelling. The writer preserves declaration order so writing a file does not change inline default initialization order. `parse_expression_checked` returns an expression and its diagnostics; `parse_expression` returns only the expression.
+
+## Semantic analysis
+
+Use `analyze(&file)` after parsing to resolve shared fields and check local semantic rules:
+
+```rust
+let analysis = chunkl::analyze(&file);
+for diagnostic in &analysis.diagnostics {
+    eprintln!("{diagnostic}");
+}
+
+for index in &analysis.class.inline_defaults {
+    let field = &analysis.class.fields[*index];
+    println!("{}: {:?}", field.name, field.default_declaration);
+}
+```
+
+Check `analysis.success()` before using the model. `class.fields` contains one member per name, its resolved storage type, and all declarations with their original wire types. `class.inline_defaults` holds member indices once in source order and omits fields directly assigned by the constructor. `constructor_assignments` lists the subsequent assignments, including assignments to properties. Named archives have their own field scopes. `archives` also reports `requires_external_version`, including self archives and versions read through a local base archive.
+
+Analysis reports conflicting declarations or defaults, invalid property reads and writes, recursive accessors, incompatible known primitive results, and chunk version blocks without a version source. Parsing and semantic analysis report diagnostics separately so tools can also work with incomplete layouts.
+
+The library provides syntax and initialization metadata. Consumers apply type defaults, evaluate expressions and property accessors, create fresh `empty` values, and serialize binary data. External type compatibility, constructors, inherited class members, and caller-supplied archive versions require the consuming tool's context. `declarations_in_source_order()` exposes the order used by the writer and analyzer. `TypeReference::array_counts` preserves each array dimension's optional count; `array_dimensions` and `fixed_array_count` remain available.
+
 ## Build and test
 
 ```sh

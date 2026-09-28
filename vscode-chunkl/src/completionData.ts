@@ -1,4 +1,4 @@
-export const ROOT_KEYWORDS: string[] = ["archive", "enum", "flags"];
+export const ROOT_KEYWORDS: string[] = ["archive", "enum", "flags", "constructor", "property"];
 
 export const CONTROL_KEYWORDS: string[] = [
   "version",
@@ -39,10 +39,34 @@ export interface SnippetDef {
   label: string;
   insertText: string;
   detail: string;
-  scope: "root" | "field";
+  scope: "root" | "field" | "accessor";
 }
 
 export const SNIPPETS: SnippetDef[] = [
+  {
+    label: "constructor",
+    insertText: "constructor\n  ${1:FieldName} = ${2:empty}$0",
+    detail: "Initialize class fields or writable properties",
+    scope: "root",
+  },
+  {
+    label: "property",
+    insertText: "property ${1:bool} ${2:Name}\n  get = ${3:expression}\n  set\n    ${4:FieldName} = value$0",
+    detail: "Computed property with a getter and setter",
+    scope: "root",
+  },
+  {
+    label: "get",
+    insertText: "get = ${1:expression}$0",
+    detail: "Property getter",
+    scope: "accessor",
+  },
+  {
+    label: "set",
+    insertText: "set\n  ${1:FieldName} = value$0",
+    detail: "Property setter",
+    scope: "accessor",
+  },
   {
     label: "chunk",
     insertText: "0x${1:000} (${2:skippable}) [${3:TM2020}]\n  version\n  $0",

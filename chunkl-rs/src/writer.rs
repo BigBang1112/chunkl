@@ -62,24 +62,24 @@ impl Writer<'_> {
             self.newline();
         }
 
-        for comment in &file.top_level_comments {
-            self.standalone_comment(comment, 0);
-        }
-        for chunk in &file.chunks {
-            self.newline();
-            self.chunk(chunk);
-        }
-        for archive in &file.archives {
-            self.newline();
-            self.archive(archive);
-        }
-        for declaration in &file.enums {
-            self.newline();
-            self.enum_declaration(declaration);
-        }
-        for declaration in &file.flags {
-            self.newline();
-            self.flags_declaration(declaration);
+        for reference in file.declarations_in_source_order() {
+            use DeclarationReference::*;
+            if !matches!(reference, Comment(_)) {
+                self.newline();
+            }
+            match reference {
+                Chunk(index) => self.chunk(&file.chunks[index]),
+                Archive(index) => self.archive(&file.archives[index]),
+                Enum(index) => self.enum_declaration(&file.enums[index]),
+                Flags(index) => self.flags_declaration(&file.flags[index]),
+                Property(index) => self.property(&file.properties[index]),
+                Constructor => {
+                    if let Some(constructor) = &file.constructor {
+                        self.constructor(constructor);
+                    }
+                }
+                Comment(index) => self.standalone_comment(&file.top_level_comments[index], 0),
+            }
         }
         self.output
     }
@@ -121,6 +121,41 @@ impl Writer<'_> {
         self.comment(archive.trailing_comment.as_ref());
         self.newline();
         self.body(&archive.body, 1);
+    }
+
+    fn constructor(&mut self, declaration: &ConstructorDeclaration) {
+        self.output.push_str("constructor");
+        self.comment(declaration.trailing_comment.as_ref());
+        self.newline();
+        self.body(&declaration.body, 1);
+    }
+
+    fn property(&mut self, declaration: &PropertyDeclaration) {
+        self.output.push_str("property ");
+        self.type_reference(&declaration.ty);
+        self.output.push(' ');
+        self.output.push_str(&declaration.name);
+        self.comment(declaration.trailing_comment.as_ref());
+        self.newline();
+        for accessor in &declaration.accessors {
+            match accessor {
+                PropertyAccessor::Get(getter) => {
+                    self.indent(1);
+                    self.output.push_str("get = ");
+                    self.expr(&getter.expression);
+                    self.comment(getter.trailing_comment.as_ref());
+                    self.newline();
+                }
+                PropertyAccessor::Set(setter) => {
+                    self.indent(1);
+                    self.output.push_str("set");
+                    self.comment(setter.trailing_comment.as_ref());
+                    self.newline();
+                    self.body(&setter.body, 2);
+                }
+                PropertyAccessor::Comment(comment) => self.standalone_comment(comment, 1),
+            }
+        }
     }
 
     fn enum_declaration(&mut self, declaration: &EnumDeclaration) {
@@ -339,10 +374,15 @@ impl Writer<'_> {
         }
         for dimension in 0..ty.array_dimensions {
             self.output.push('[');
-            if dimension == 0 {
-                if let Some(count) = &ty.fixed_array_count {
-                    self.output.push_str(count);
-                }
+            let count = if ty.array_counts.len() == ty.array_dimensions {
+                ty.array_counts[dimension].as_ref()
+            } else if dimension == 0 {
+                ty.fixed_array_count.as_ref()
+            } else {
+                None
+            };
+            if let Some(count) = count {
+                self.output.push_str(count);
             }
             self.output.push(']');
         }
@@ -425,7 +465,11 @@ impl Writer<'_> {
                 });
                 self.expr(operand);
             }
-            Expression::Binary { left, operator, right } => {
+            Expression::Binary {
+                left,
+                operator,
+                right,
+            } => {
                 self.expr(left);
                 self.output.push_str(match operator {
                     BinaryOp::LogicalOr => " || ",
@@ -461,6 +505,36 @@ impl Writer<'_> {
                     }
                     self.expr(element);
                 }
+                self.output.push(')');
+            }
+            Expression::PatternTest { value, pattern } => {
+                self.expr(value);
+                self.output.push_str(" is ");
+                self.pattern(pattern);
+            }
+        }
+    }
+
+    fn pattern(&mut self, pattern: &Pattern) {
+        match pattern {
+            Pattern::Constant(value) => self.expr(value),
+            Pattern::Not(operand) => {
+                self.output.push_str("not ");
+                self.pattern(operand);
+            }
+            Pattern::And(left, right) | Pattern::Or(left, right) => {
+                self.pattern(left);
+                self.output
+                    .push_str(if matches!(pattern, Pattern::And(..)) {
+                        " and "
+                    } else {
+                        " or "
+                    });
+                self.pattern(right);
+            }
+            Pattern::Parenthesized(inner) => {
+                self.output.push('(');
+                self.pattern(inner);
                 self.output.push(')');
             }
         }

@@ -47,7 +47,7 @@ function completionsAt(source, lineText) {
 
 test("offers plain declaration and control keywords alongside separate snippets", () => {
   const root = completionItemsAt("en", "en");
-  for (const label of ["archive", "enum", "flags"]) {
+  for (const label of ["archive", "enum", "flags", "constructor", "property"]) {
     const item = root.find((item) => item.label === label);
     assert.equal(item.kind, 2); // Keyword
     assert.equal(item.insertText, undefined); // Insert the keyword itself.
@@ -108,10 +108,10 @@ test("provider suggests local enums and fields without class or other type names
   assert.deepEqual(completionsAt(source, "  if Options::"), ["Enabled"]);
   for (const line of ["  while ", "  int[Width * "]) {
     const labels = completionsAt(source, line);
-    for (const name of ["Width", "Material", "Direction", "Options", "Direction::North", "Options::Enabled", "true", "false", "null", "empty"]) {
+    for (const name of ["Width", "OldField", "Material", "Direction", "Options", "Direction::North", "Options::Enabled", "true", "false", "null", "empty"]) {
       assert.ok(labels.includes(name), `${name} missing at ${line}`);
     }
-    for (const name of ["OldField", "int", "vec3", "CMwNod", "CPlugMaterial"]) {
+    for (const name of ["int", "vec3", "CMwNod", "CPlugMaterial"]) {
       assert.ok(!labels.includes(name), `${name} should not be suggested at ${line}`);
     }
   }
@@ -122,7 +122,7 @@ test("provider suggests local enums and fields without class or other type names
     .includes(item.label)));
 });
 
-test("member suggestions stay in the current body and exclude later declarations", () => {
+test("class fields include forward declarations while named archives keep their own scope", () => {
   const source = [
     "Test 0x01000000", "archive", "  version = 1", "  int Count",
     "  if Count > 0", "    int Count", "  if ", "  int Later",
@@ -132,12 +132,87 @@ test("member suggestions stay in the current body and exclude later declarations
   ].join("\n");
   const expression = completionsAt(source, "  if ");
   assert.equal(expression.filter((name) => name === "Count").length, 1);
-  assert.ok(expression.includes("Version"));
-  assert.ok(!expression.includes("Later"));
+  assert.ok(expression.includes("v"));
+  assert.ok(!expression.includes("Version"));
+  assert.ok(expression.includes("Later"));
   assert.ok(expression.includes("Direction::East"));
   assert.ok(expression.includes("Options::Mode"));
   assert.ok(!completionsAt(source, "  if true").includes("Count"));
   assert.ok(!completionsAt(source, "  if true").includes("Version"));
+});
+
+test("constructor and accessor completions follow the new declaration rules", () => {
+  const source = [
+    "Test 0x01000000", "constructor", "  F", "  Flags = ",
+    "property bool IsGhost", "  get = Flags != 0", "  set", "    F", "    if ",
+    "property bool HasSkin", "  get = ", "property int WriteOnly", "  set", "    Flags = value",
+    "0x001", "  short Flags", "archive", "  int Flags", "archive Other", "  string Hidden",
+  ].join("\n");
+  const constructorTargets = completionsAt(source, "  F");
+  assert.ok(constructorTargets.includes("Flags"));
+  assert.ok(constructorTargets.includes("IsGhost"));
+  assert.ok(constructorTargets.includes("WriteOnly"));
+  for (const invalid of ["HasSkin", "Hidden", "version", "if", "value"]) {
+    assert.ok(!constructorTargets.includes(invalid), invalid);
+  }
+  const setterTargets = completionsAt(source, "    F");
+  assert.ok(setterTargets.includes("Flags"));
+  assert.ok(setterTargets.includes("if"));
+  for (const invalid of ["IsGhost", "HasSkin", "version", "loop", "while", "return", "value"]) {
+    assert.ok(!setterTargets.includes(invalid), invalid);
+  }
+  const setterExpression = completionItemsAt(source, "    if ");
+  assert.equal(setterExpression.find((item) => item.label === "value").detail, "bool parameter");
+  assert.equal(setterExpression.find((item) => item.label === "Flags").detail, "int field");
+  assert.equal(setterExpression.filter((item) => item.label === "Flags").length, 1);
+  assert.ok(setterExpression.some((item) => item.label === "HasSkin"));
+  assert.ok(!setterExpression.some((item) => item.label === "WriteOnly"));
+  const getterExpression = completionsAt(source, "  get = ");
+  for (const invalid of ["value", "HasSkin", "WriteOnly", "Hidden"]) {
+    assert.ok(!getterExpression.includes(invalid), invalid);
+  }
+  assert.ok(getterExpression.includes("Flags"));
+  const accessors = completionsAt("Test 0x01000000\nproperty bool Flag\n  ", "  ");
+  assert.deepEqual(accessors, ["get", "set", "get (snippet)", "set (snippet)"]);
+});
+
+test("archive and chunk version suggestions use their own context", () => {
+  const source = ["Test 0x01000000", "0x001", "  version", "  if ", "archive Named", "  if v "].join("\n");
+  const chunk = completionsAt(source, "  if ");
+  assert.ok(chunk.includes("Version"));
+  assert.ok(!chunk.includes("v"));
+  const archive = completionsAt(source, "  if v ");
+  assert.ok(archive.includes("v"));
+  assert.ok(!archive.includes("Version"));
+});
+
+test("properties offer casts and pattern operators in expressions", () => {
+  assert.deepEqual(getCompletionContext("property byte<Dire"), { kind: "cast" });
+  const source = ["Test 0x01000000", "property byte<", "enum Direction", "  North"].join("\n");
+  assert.deepEqual(completionsAt(source, "property byte<"), ["Direction"]);
+  const expression = "Test 0x01000000\n0x001\n  string Name\n  if Name is ";
+  for (const keyword of ["is", "not", "and", "or", "null", "empty"]) {
+    assert.ok(completionsAt(expression, "  if Name is ").includes(keyword));
+  }
+  assert.ok(!completionsAt("Test 0x01000000\n0x001\n  if ", "  if ").includes("not"));
+  assert.ok(SNIPPETS.some((snippet) => snippet.label === "constructor" && snippet.scope === "root"));
+  assert.ok(SNIPPETS.some((snippet) => snippet.label === "property" && snippet.scope === "root"));
+});
+
+test("grammar highlights properties, accessors, constructors, and pattern operators", () => {
+  const grammar = JSON.parse(readFileSync(path.join(__dirname, "../syntaxes/chunkl.tmLanguage.json"), "utf8"));
+  assert.match("constructor // defaults", new RegExp(grammar.repository["constructor-declaration"].match));
+  assert.match("property int[Count * 2] Values", new RegExp(grammar.repository["property-declaration"].begin));
+  assert.match("property CGameCtnBlock*? Block", new RegExp(grammar.repository["property-declaration"].begin));
+  const accessors = grammar.repository["property-accessor"].patterns;
+  assert.match("  get = Name is not (null or empty)", new RegExp(accessors[0].begin));
+  assert.match("  set // incoming value", new RegExp(accessors[1].begin));
+  const words = grammar.repository.expression.patterns.find((pattern) => pattern.name === "keyword.operator.word.chunkl");
+  for (const word of ["is", "not", "and", "or"]) {
+    assert.match(word, new RegExp(words.match));
+  }
+  assert.doesNotMatch("ordinary", new RegExp(words.match));
+  assert.equal(grammar.injections["L:meta.setter.chunkl - comment - string"].patterns[0].name, "variable.parameter.setter.chunkl");
 });
 
 test("new syntax has field snippets", () => {

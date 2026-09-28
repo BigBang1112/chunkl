@@ -6,11 +6,34 @@ use crate::SourceRange;
 pub enum Expression {
     Literal(Literal),
     Identifier(String),
-    ScopedIdentifier { qualifier: String, name: String },
-    Unary { operator: UnaryOp, operand: Box<Expression> },
-    Binary { left: Box<Expression>, operator: BinaryOp, right: Box<Expression> },
+    ScopedIdentifier {
+        qualifier: String,
+        name: String,
+    },
+    Unary {
+        operator: UnaryOp,
+        operand: Box<Expression>,
+    },
+    Binary {
+        left: Box<Expression>,
+        operator: BinaryOp,
+        right: Box<Expression>,
+    },
     Parenthesized(Box<Expression>),
     Tuple(Vec<Expression>),
+    PatternTest {
+        value: Box<Expression>,
+        pattern: Pattern,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Pattern {
+    Constant(Box<Expression>),
+    Not(Box<Pattern>),
+    And(Box<Pattern>, Box<Pattern>),
+    Or(Box<Pattern>, Box<Pattern>),
+    Parenthesized(Box<Pattern>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -62,6 +85,9 @@ pub struct ChunkLFile {
     pub archives: Vec<ArchiveDeclaration>,
     pub enums: Vec<EnumDeclaration>,
     pub flags: Vec<FlagsDeclaration>,
+    pub properties: Vec<PropertyDeclaration>,
+    pub constructor: Option<ConstructorDeclaration>,
+    pub declaration_order: Vec<DeclarationReference>,
     pub top_level_comments: Vec<Comment>,
     pub range: SourceRange,
 }
@@ -82,6 +108,7 @@ pub struct ClassAttribute {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChunkDeclaration {
+    pub range: SourceRange,
     pub offset: ChunkOffset,
     pub attributes: Option<AttributeList>,
     pub version_qualifiers: Vec<VersionQualifier>,
@@ -131,9 +158,11 @@ pub enum BodyStatement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldDeclaration {
+    pub range: SourceRange,
     pub ty: TypeReference,
     pub name: Option<String>,
     pub default_value: Option<Expression>,
+    pub default_value_source: Option<String>,
     pub attributes: Option<AttributeList>,
     pub trailing_comment: Option<Comment>,
     pub is_special_keyword: bool,
@@ -147,6 +176,7 @@ pub struct TypeReference {
     pub is_nullable: bool,
     pub array_dimensions: usize,
     pub fixed_array_count: Option<String>,
+    pub array_counts: Vec<Option<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -165,6 +195,7 @@ pub enum VersionConditionKind {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VersionCondition {
+    pub range: SourceRange,
     pub kind: VersionConditionKind,
     pub version: u32,
     pub version_end: Option<u32>,
@@ -252,6 +283,7 @@ pub struct SwitchDefault {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComputedAssignment {
+    pub range: SourceRange,
     pub target_name: String,
     pub expression: Expression,
     pub trailing_comment: Option<Comment>,
@@ -259,6 +291,7 @@ pub struct ComputedAssignment {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArchiveDeclaration {
+    pub range: SourceRange,
     pub name: Option<String>,
     pub attributes: Option<AttributeList>,
     pub body: Vec<BodyStatement>,
@@ -315,4 +348,94 @@ pub enum CommentStyle {
 pub struct Comment {
     pub text: String,
     pub style: CommentStyle,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DeclarationReference {
+    Chunk(usize),
+    Archive(usize),
+    Enum(usize),
+    Flags(usize),
+    Property(usize),
+    Constructor,
+    Comment(usize),
+}
+
+impl ChunkLFile {
+    /// Source order for parsed declarations, followed by newly appended declarations.
+    pub fn declarations_in_source_order(&self) -> Vec<DeclarationReference> {
+        use DeclarationReference::*;
+        let current: Vec<_> = (0..self.chunks.len())
+            .map(Chunk)
+            .chain((0..self.archives.len()).map(Archive))
+            .chain((0..self.enums.len()).map(Enum))
+            .chain((0..self.flags.len()).map(Flags))
+            .chain((0..self.properties.len()).map(Property))
+            .chain((0..self.top_level_comments.len()).map(Comment))
+            .chain(self.constructor.as_ref().map(|_| Constructor))
+            .collect();
+        let mut remaining: std::collections::HashSet<_> = current.iter().copied().collect();
+        self.declaration_order
+            .iter()
+            .chain(&current)
+            .copied()
+            .filter(|reference| remaining.remove(reference))
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConstructorDeclaration {
+    pub body: Vec<BodyStatement>,
+    pub trailing_comment: Option<Comment>,
+    pub range: SourceRange,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PropertyDeclaration {
+    pub ty: TypeReference,
+    pub name: String,
+    pub accessors: Vec<PropertyAccessor>,
+    pub trailing_comment: Option<Comment>,
+    pub range: SourceRange,
+}
+
+impl PropertyDeclaration {
+    pub fn getter(&self) -> Option<&GetterAccessor> {
+        self.accessors.iter().find_map(|a| {
+            if let PropertyAccessor::Get(g) = a {
+                Some(g)
+            } else {
+                None
+            }
+        })
+    }
+    pub fn setter(&self) -> Option<&SetterAccessor> {
+        self.accessors.iter().find_map(|a| {
+            if let PropertyAccessor::Set(s) = a {
+                Some(s)
+            } else {
+                None
+            }
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PropertyAccessor {
+    Get(GetterAccessor),
+    Set(SetterAccessor),
+    Comment(Comment),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GetterAccessor {
+    pub expression: Expression,
+    pub trailing_comment: Option<Comment>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SetterAccessor {
+    pub body: Vec<BodyStatement>,
+    pub trailing_comment: Option<Comment>,
 }
