@@ -188,15 +188,26 @@ jobs:
           name: vscode-extension
           path: artifacts/vscode
 
-      - name: Create or update release
+      - name: Create or publish release
         run: |
           printf '%s\n' "$RELEASE_BODY" > "$RUNNER_TEMP/release-notes.md"
           shopt -s nullglob
           assets=(artifacts/nuget/*.nupkg artifacts/nuget/*.snupkg artifacts/cargo/*.crate artifacts/vscode/*.vsix)
 
-          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
-            gh release edit "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+          if release=$(gh release view "$RELEASE_TAG" --json isDraft,assets); then
+            if [[ "$(jq -r '.isDraft' <<< "$release")" != true ]]; then
+              echo "$RELEASE_TAG is already published; skipping release changes."
+              exit 0
+            fi
+
+            for asset in "${assets[@]}"; do
+              if jq --exit-status --arg name "$(basename "$asset")" 'any(.assets[]; .name == $name)' <<< "$release" > /dev/null; then
+                echo "$(basename "$asset") is already attached to the draft; skipping upload."
+              else
+                gh release upload "$RELEASE_TAG" "$asset"
+              fi
+            done
+            gh release edit "$RELEASE_TAG" --draft=false --notes-file "$RUNNER_TEMP/release-notes.md"
           else
             release_args=(--verify-tag --title "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md")
             if [[ "$RELEASE_TAG" == *-* ]]; then
