@@ -1,0 +1,154 @@
+name: Publish Packages
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to publish (for example v1.1.0)
+        required: true
+        type: string
+
+concurrency:
+  group: publish-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  publish-nuget:
+    name: Publish NuGet package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test
+        run: dotnet test dotnet/ChunkL.Tests/ChunkL.Tests.csproj -c Release -p:ContinuousIntegrationBuild=true -p:GeneratePackageOnBuild=false
+
+      - name: Pack
+        run: dotnet pack dotnet/ChunkL/ChunkL.csproj -c Release -p:ContinuousIntegrationBuild=true -p:GeneratePackageOnBuild=false --output artifacts/nuget
+
+      - name: Publish to NuGet.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          for package in artifacts/nuget/*.nupkg; do
+            dotnet nuget push "$package" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+
+      - name: Publish to GitHub Packages
+        env:
+          NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for package in artifacts/nuget/*.nupkg; do
+            dotnet nuget push "$package" --api-key "$NUGET_AUTH_TOKEN" --source "https://nuget.pkg.github.com/${GITHUB_REPOSITORY_OWNER}/index.json" --skip-duplicate --no-symbols
+          done
+
+      - name: Upload NuGet packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: nuget-packages
+          path: |
+            artifacts/nuget/*.nupkg
+            artifacts/nuget/*.snupkg
+          if-no-files-found: error
+
+  publish-cargo:
+    name: Publish Cargo package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chunkl-rs
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Test
+        run: cargo test --locked --verbose
+
+      - name: Package
+        run: cargo package --locked
+
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          metadata=$(cargo metadata --no-deps --format-version 1 --locked)
+          crate=$(jq -r '.packages[0].name' <<< "$metadata")
+          version=$(jq -r '.packages[0].version' <<< "$metadata")
+          status=$(curl --silent --show-error --output "$RUNNER_TEMP/crate-version.json" --write-out '%{http_code}' "https://crates.io/api/v1/crates/$crate/$version")
+
+          case "$status" in
+            200) echo "$crate $version is already published; skipping upload." ;;
+            404) cargo publish --locked ;;
+            *) echo "Failed to check crates.io package version (HTTP $status)." >&2; exit 1 ;;
+          esac
+
+      - name: Upload Cargo package
+        uses: actions/upload-artifact@v7
+        with:
+          name: cargo-package
+          path: chunkl-rs/target/package/*.crate
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub release
+    needs: [publish-nuget, publish-cargo]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      RELEASE_BODY: >-
+        Assets were automatically generated using the [publish workflow](<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}>).
+    steps:
+      - name: Download NuGet packages
+        uses: actions/download-artifact@v8
+        with:
+          name: nuget-packages
+          path: artifacts/nuget
+
+      - name: Download Cargo package
+        uses: actions/download-artifact@v8
+        with:
+          name: cargo-package
+          path: artifacts/cargo
+
+      - name: Create or update release
+        run: |
+          printf '%s\n' "$RELEASE_BODY" > "$RUNNER_TEMP/release-notes.md"
+          shopt -s nullglob
+          assets=(artifacts/nuget/*.nupkg artifacts/nuget/*.snupkg artifacts/cargo/*.crate)
+
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+            gh release edit "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+          else
+            release_args=(--verify-tag --title "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md")
+            if [[ "$RELEASE_TAG" == *-* ]]; then
+              release_args+=(--prerelease)
+            fi
+            gh release create "$RELEASE_TAG" "${assets[@]}" "${release_args[@]}"
+          fi
