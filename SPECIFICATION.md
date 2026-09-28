@@ -12,17 +12,19 @@ ChunkL (`.chunkl`) describes the binary layout of classes. Each file defines one
 4. [Chunk Attributes](#4-chunk-attributes)
 5. [Version Qualifiers](#5-version-qualifiers)
 6. [Field Declarations](#6-field-declarations)
-7. [Casted Fields](#7-casted-fields)
-8. [Type Modifiers](#8-type-modifiers)
-9. [Version Blocks](#9-version-blocks)
-10. [Control Flow](#10-control-flow)
-11. [Enum Declarations](#11-enum-declarations)
-12. [Flags Declarations](#12-flags-declarations)
-13. [Archive Declarations](#13-archive-declarations)
-14. [Assignment and Default Values](#14-assignment-and-default-values)
-15. [Comments](#15-comments)
-16. [Expressions](#16-expressions)
-17. [Full File Example](#17-full-file-example)
+7. [Property Declarations](#7-property-declarations)
+8. [Casted Fields](#8-casted-fields)
+9. [Type Modifiers](#9-type-modifiers)
+10. [Version Blocks](#10-version-blocks)
+11. [Control Flow](#11-control-flow)
+12. [Enum Declarations](#12-enum-declarations)
+13. [Flags Declarations](#13-flags-declarations)
+14. [Archive Declarations](#14-archive-declarations)
+15. [Constructor Declaration](#15-constructor-declaration)
+16. [Assignment and Default Values](#16-assignment-and-default-values)
+17. [Comments](#17-comments)
+18. [Expressions](#18-expressions)
+19. [Full File Example](#19-full-file-example)
 
 ---
 
@@ -35,13 +37,18 @@ A `.chunkl` file starts with a class header. The remaining declarations are:
 - **Archive declarations** (lines starting with `archive `)
 - **Enum declarations** (lines starting with `enum `)
 - **Flags declarations** (lines starting with `flags `)
+- **Property declarations** (lines starting with `property `)
+- An optional **constructor declaration** (a line containing `constructor`)
 
-Class attributes go immediately after the header. Chunks, archives, enums, and flags may then appear in any order. Blank lines and comments are allowed between declarations.
+Class attributes go immediately after the header. Chunks, archives, enums, flags, properties, and the constructor may then appear in any order. At most one constructor declaration is allowed per class. Blank lines and comments are allowed between declarations.
 
 ```
 ClassName 0xCLASSID000 // optional class comment
 - inherits: ParentClassName
 - abstract
+
+constructor
+  FieldName = default_value
 
 0xAAA [game_list] // chunk description
   field declarations...
@@ -56,13 +63,16 @@ enum EnumName
 flags FlagsName
   MemberA[0]
   MemberB[1..3]
+
+property type PropertyName
+  get = expression
 ```
 
 ---
 
 ## 2. Class Header
 
-The first non-empty line of every `.chunkl` file is the **class header**:
+The first non-empty line is the class header:
 
 ```
 ClassName 0xCLASSID000
@@ -80,7 +90,7 @@ CGameCtnBlock 0x03057000 // Block placed on a map.
 
 ### Class Attributes
 
-Immediately after the class header, one or more lines starting with `- ` may appear. Each attribute follows the general form:
+Class attributes go immediately after the header. Each attribute starts with `- `:
 
 ```
 - attributeName: attributeValue
@@ -92,13 +102,13 @@ Boolean (flag) attributes with no value use the shorter form:
 - attributeName
 ```
 
-Both attributeName and attributeValue can contain spaces.
+Both `attributeName` and `attributeValue` can contain spaces.
 
 #### Examples
 
 | Attribute | Value | Meaning |
 |---|---|---|
-| `inherits` | `ParentClass` | This class extends `ParentClass`. Inherits all of its chunks. |
+| `inherits` | `ParentClass` | The class extends `ParentClass` and inherits all of its chunks. |
 | `abstract` | *(none)* | This class is abstract and cannot be directly instantiated. |
 
 ```
@@ -149,7 +159,7 @@ Both key and value can contain spaces.
 
 #### Examples
 
-Flag Attributes:
+Flag attributes:
 
 | Attribute | Meaning |
 |---|---|
@@ -183,7 +193,7 @@ A version list, enclosed in square brackets `[...]`, specifies which version con
 0xHHH [VersionA, VersionB, VersionC]
 ```
 
-Each entry is an alphanumeric identifier for a game, software version, platform, or other context in which the chunk appears. There is no fixed list of labels.
+Each entry is an alphanumeric label for a game, software version, platform, or other context. The language has no fixed list of labels.
 
 A version identifier may be followed by `.vN` to indicate the maximum chunk version observed in that context:
 
@@ -224,18 +234,72 @@ The following are special keywords that generate control flow rather than a data
 | `base` | Call the read/write method of the base chunk (when the chunk has a `base:` attribute). |
 | `return` | Stop processing the current chunk/archive early (early return). |
 | `throw` | Mark an unimplemented or unsupported section. Parsing will throw an exception. |
-| `block` | Group fields under a custom attribute-driven block. See [Control Flow](#10-control-flow). |
-| `switch` | Dispatch to a field block based on a value. See [Control Flow](#10-control-flow). |
-| `skip` | Skip a number of bytes without reading their contents. See [Control Flow](#10-control-flow). |
-| `assert` | Assert that a condition is true and raise an exception otherwise. See [Control Flow](#10-control-flow). |
-| `loop` | Repeat a field block a number of times. See [Control Flow](#10-control-flow). |
-| `while` | Repeat a field block while a condition remains true. See [Control Flow](#10-control-flow). |
+| `block` | Group fields under a custom attribute-driven block. See [Control Flow](#11-control-flow). |
+| `switch` | Dispatch to a field block based on a value. See [Control Flow](#11-control-flow). |
+| `skip` | Skip a number of bytes without reading their contents. See [Control Flow](#11-control-flow). |
+| `assert` | Assert that a condition is true and raise an exception otherwise. See [Control Flow](#11-control-flow). |
+| `loop` | Repeat a field block a number of times. See [Control Flow](#11-control-flow). |
+| `while` | Repeat a field block while a condition remains true. See [Control Flow](#11-control-flow). |
 
 Most of these support attribute lists and trailing comments. `if`, `loop`, `while`, and `switch` do not support attribute lists.
 
 ---
 
-## 7. Casted Fields
+## 7. Property Declarations
+
+A property exposes existing class fields through a getter, a setter, or both. It has no independent stored value and contributes no bytes to the binary layout. Properties are declared at the file root level:
+
+```
+property type PropertyName // optional comment
+  get = expression
+  set
+    FieldName = value
+```
+
+The header uses the same type syntax as a field. The property name must be unique within the class, including its named fields. The header cannot have an inline default, attributes, or version qualifiers.
+
+Indent accessors by two spaces. A property needs at least one accessor, with at most one `get` and one `set`. Either order is valid.
+
+- `get = expression` evaluates an [expression](#18-expressions) each time you read the property. The result must be compatible with the property type. The getter does not change state or cache its result.
+- `set` takes a non-empty block indented by four spaces. Inside this block, `value` is reserved for the incoming value and has the property type.
+- A property with only `get` is read-only. Assigning to it is invalid. A property with only `set` is write-only. Using it in an expression is invalid.
+
+A setter supports computed assignments, `if`/`else if`/`else`, and `switch`/`case`/`default`. Use the existing syntax and indentation rules. Assignments run in source order and target class fields or properties with setters. Accessors cannot contain field declarations, binary read/write operations, version blocks, or other control flow statements.
+
+Accessors can refer to class fields and other properties declared anywhere in the file. Reading a property calls its getter. Assigning to it calls its setter. An accessor must not call itself, directly or through another property.
+
+You can use properties in expressions and computed assignments inside chunks and the self archive. Property declarations belong at the file root level and cannot go inside a chunk or archive body. Trailing comments and standalone comment lines are allowed in declarations and setter bodies.
+
+To give a property an initial value, assign to it in the [constructor](#15-constructor-declaration). The assignment calls its setter at that point in the constructor, after the applicable inline field defaults have been applied.
+
+This example exposes two bits of `Flags`, with a setter for `IsGhost`:
+
+```
+CGameCtnBlock 0x03057000
+
+constructor
+  IsGhost = true
+
+0x002
+  int Flags = 0
+
+property bool IsGhost
+  get = (Flags & (1 << 17)) != 0
+  set
+    if value
+      Flags = Flags | (1 << 17)
+    else
+      Flags = Flags & ~(1 << 17)
+
+property bool HasSkin
+  get = (Flags & (1 << 15)) != 0
+```
+
+Setting `IsGhost` updates bit 17 of `Flags` and leaves the other bits unchanged. The constructor sets that bit initially. Reading `Flags` from the stream later replaces the stored value, so both getters reflect the flags just read. Only `Flags` is serialized.
+
+---
+
+## 8. Casted Fields
 
 Any type may be annotated with a cast target using angle brackets:
 
@@ -243,7 +307,7 @@ Any type may be annotated with a cast target using angle brackets:
 type<TargetType> FieldName
 ```
 
-The underlying type is read/written as normal, then the value is cast to `TargetType`. The cast target is most commonly an enum name, but may be any compatible type.
+The underlying type is read or written normally, then the value is cast to `TargetType`. The target is usually an enum, but any compatible type is allowed.
 
 ```
 byte<Direction> Dir
@@ -259,7 +323,7 @@ byte<CPlugSurface.MaterialId> SurfacePhysicId
 
 ---
 
-## 8. Type Modifiers
+## 9. Type Modifiers
 
 ### Chunk-Preference Modifier
 
@@ -296,12 +360,12 @@ transquat[] U03
 int[][] NestedData
 ```
 
-Nullable element arrays: `[]` after `?` on the element type:
+For nullable elements, put `[]` after the element type's `?`:
 ```
 CMwNod?[] NadeoSkinFids (external)
 ```
 
-Fixed count arrays: placing an integer expression inside `[...]` declares an array whose element count is not read from the stream. The expression uses the syntax in [Expressions](#16-expressions) and may refer to previously read fields:
+Put an integer expression inside `[...]` to declare a fixed count array. Its element count is not read from the stream. The count uses the [expression syntax](#18-expressions) and can refer to fields already read:
 
 ```
 float[4] Quaternion
@@ -328,9 +392,9 @@ int?[Count] OptionalValues
 
 ---
 
-## 9. Version Blocks
+## 10. Version Blocks
 
-A `version` (or `versionb`) field at the start of a chunk or archive body reads or writes a version number. Subsequent block conditions check this version to conditionally include fields.
+A `version` or `versionb` field at the start of a chunk or archive body reads or writes the version number. Version blocks use this number to decide which fields to include.
 
 ### Version Condition Syntax
 
@@ -375,7 +439,7 @@ Version conditions nest: each block is active when **all** enclosing version con
 
 ---
 
-## 10. Control Flow
+## 11. Control Flow
 
 ### `if` Statement
 
@@ -390,7 +454,7 @@ Conditional execution of a field block, with optional `else if` and `else` branc
     field...
 ```
 
-- The condition is an [expression](#16-expressions).
+- The condition is an [expression](#18-expressions).
 - `else if` and `else` must immediately follow the preceding branch at the same indentation level as `if`.
 - Any number of `else if` branches may appear. `else` is optional.
 - `if` does not support attribute lists.
@@ -447,7 +511,7 @@ Marks an incomplete, unsupported, or deliberately unimplemented section. Encount
 
 ### `skip`
 
-Skips a number of bytes in the binary stream without reading them into a named field. The byte count is an [expression](#16-expressions):
+Skips a number of bytes in the binary stream without reading them into a named field. The byte count is an [expression](#18-expressions):
 
 ```
   skip N
@@ -465,7 +529,7 @@ Asserts that a condition holds during parsing. If the condition is false, an exc
   assert condition (type: InvalidDataException)
 ```
 
-The condition is an [expression](#16-expressions). `assert` supports attribute lists.
+The condition is an [expression](#18-expressions). `assert` supports attribute lists.
 
 Examples:
 ```
@@ -484,7 +548,7 @@ Groups a set of fields under a customizable logic block. Unlike `if`, a `block` 
     field...
 ```
 
-The block implementation defines what its attributes mean. They may specify a named scope, a custom read/write strategy, or code generation metadata. An empty attribute list is also valid.
+The block implementation defines what each attribute means. Attributes can specify a named scope, a custom read/write strategy, or code generation metadata. An empty attribute list is valid.
 
 Example:
 ```
@@ -503,7 +567,7 @@ Example:
 
 ### `loop` Statement
 
-Repeats a field block a fixed number of times. The count is an integer [expression](#16-expressions), evaluated once before the first iteration:
+Repeats a field block a fixed number of times. The count is an integer [expression](#18-expressions), evaluated once before the first iteration:
 
 ```
   loop N // comment
@@ -530,7 +594,7 @@ Examples:
 
 ### `while` Statement
 
-Repeats a field block while a boolean [expression](#16-expressions) is true. The condition is evaluated before every iteration, including the first. Fields used by the first evaluation must already have values, and the body can update them for later evaluations:
+Repeats a field block while a boolean [expression](#18-expressions) is true. The condition is evaluated before every iteration, including the first. Fields used by the first evaluation must already have values, and the body can update them for later evaluations:
 
 ```
   byte HasNext
@@ -556,8 +620,8 @@ Dispatches to one of several field blocks based on the value of an expression:
       field...
 ```
 
-- The `switch` expression is an [expression](#16-expressions).
-- Each `case` value is an [expression](#16-expressions).
+- The `switch` expression is an [expression](#18-expressions).
+- Each `case` value is an [expression](#18-expressions).
 - `default` is optional and matches when no `case` value matches.
 - Cases do not fall through. Each block is independent.
 - `switch` does not support attribute lists.
@@ -582,7 +646,7 @@ Examples:
 
 ---
 
-## 11. Enum Declarations
+## 12. Enum Declarations
 
 Enums are declared at the file root level (no indentation):
 
@@ -630,7 +694,7 @@ enum MapKind // The map's intended use.
 
 ---
 
-## 12. Flags Declarations
+## 13. Flags Declarations
 
 Flags declarations describe how the bits of an integer field are partitioned into named members. They are declared at the file root level:
 
@@ -673,7 +737,7 @@ flags EItemFlags
 
 ---
 
-## 13. Archive Declarations
+## 14. Archive Declarations
 
 Archives are inline, value-semantic serialization structures (similar to structs). They are declared at the file root level:
 
@@ -704,7 +768,7 @@ Key-value attributes:
 
 | Attribute | Value | Meaning |
 |---|---|---|
-| `inherits` | `BaseName` | This archive extends `BaseName`. The child body must call `base` to serialize inherited fields. `BaseName` may be another archive or an interface (e.g., `IKey`). |
+| `inherits` | `BaseName` | The archive extends `BaseName`. Its body must call `base` to serialize inherited fields. `BaseName` can be another archive or an interface such as `IKey`. |
 
 ```
 archive DerivedArchive (inherits: BaseArchive)
@@ -747,11 +811,58 @@ archive
 
 ---
 
-## 14. Assignment and Default Values
+## 15. Constructor Declaration
+
+`constructor` sets field defaults when a new class instance is created. It appears at the file root level, with assignments indented by two spaces:
+
+```
+constructor // optional comment
+  FieldName = default_value
+  OtherField = expression // optional comment
+```
+
+- A class can have at most one constructor. It is optional.
+- The header is just `constructor`, with an optional comment. It takes no name, parameters, attributes, or version qualifiers.
+- Write assignments as `FieldName = expression`, without a type. A target must be a named class field from a chunk or the self archive, or a [property](#7-property-declarations) with a setter. It can be declared before or after the constructor. Anonymous fields and fields in named archives cannot be targets.
+- Values use the [expression syntax](#18-expressions). Assignments run in source order and can use field values already initialized.
+- The body allows only assignments and comments. Field declarations, version blocks, and control flow statements are invalid. An empty body is valid.
+
+Constructor assignments run once when the instance is created. If a constructor assignment targets a field, that field's inline default is skipped entirely. Its default expression is not evaluated or applied, even if the field declaration appears before the constructor.
+
+Apply inline defaults to the remaining fields, then run constructor assignments in source order. Fields omitted from the constructor keep their defaults.
+
+The constructor does not declare fields or read or write binary data. Reading a chunk or self archive later can replace the initial values with values from the stream.
+
+Example:
+
+```
+CGameCtnMediaClip 0x03079000
+
+constructor
+  Name = ""
+  StopWhenLeave = true
+  StopWhenRespawn = true
+  LocalPlayerClipEntIndex = -1
+
+0x00D [MP4.v0, TM2020.v1]
+  version
+  string Name
+  bool StopWhenLeave = false
+  bool StopWhenRespawn
+  int LocalPlayerClipEntIndex
+```
+
+`StopWhenLeave` starts as `true`, as assigned by the constructor. Its inline `false` default is skipped.
+
+---
+
+## 16. Assignment and Default Values
 
 ### Constant Field Values
 
-A field declaration may include a default value using `= value`. The value is an [expression](#16-expressions).
+Add `= value` to a field declaration to give it a default. The value is an [expression](#18-expressions).
+
+For a named class field, this default applies only if the [constructor](#15-constructor-declaration) does not assign to that field. If it does, skip the default expression entirely and use the constructor assignment.
 
 ```
 bool IsEnabled = true
@@ -764,11 +875,13 @@ version = 1
 int = -1
 ident MapInfo = empty
 Material[] Materials = empty
+string Name = empty
+CPlugMaterialUserInst MaterialUserInst = empty
 ```
 
 ### Computed Assignments
 
-An assignment without a type keyword mutates an already-declared variable using an [expression](#16-expressions):
+An assignment updates a declared variable or calls a property's setter. Its value is an [expression](#18-expressions):
 
 ```
 Flags = Flags & 0x1FFFF
@@ -776,11 +889,11 @@ Flags = Flags | 0x2000
 MapCoordTarget = MapCoordOrigin
 ```
 
-This operation conventionally does not include the field type.
+Write the assignment without the field type.
 
 ### Anonymous Numeric Value Assertion
 
-When a field has no name and an `= N` default, it asserts the read value equals `N`:
+An anonymous field with `= N` asserts that the value read equals `N`:
 
 ```
 int = 1
@@ -789,9 +902,9 @@ version = 2
 
 ---
 
-## 15. Comments
+## 17. Comments
 
-ChunkL supports two single-line comment syntaxes (no block comments):
+ChunkL supports single-line comments with `//` or `#`. It has no block comments:
 
 ```
 // This is a comment
@@ -800,22 +913,23 @@ int FieldName // inline trailing comment
 int FieldName # inline trailing comment
 ```
 
-Comments may appear anywhere a trailing comment is valid: after any declaration, field, chunk header, enum value, or on a line by itself.
+Comments can follow declarations, fields, chunk headers, and enum values. They can also occupy a line of their own.
 
 ---
 
-## 16. Expressions
+## 18. Expressions
 
-Expressions appear in `if`/`else if` and `while` conditions, `switch`/`case` values, `assert` conditions, `skip` counts, `loop` counts, fixed array counts, field default values, and computed assignments. Every expression is parsed according to the grammar below using standard C-style operator precedence.
+ChunkL uses expressions for conditions, `switch`/`case` values, byte and repetition counts, fixed array counts, defaults, assignments, and property accessors. This includes `if`/`else if`, `while`, `assert`, `skip`, and `loop`. The grammar and operator precedence are defined below.
 
 ### Grammar
 
 ```
 expression     = logical_or
-logical_or     = logical_and ('||' logical_and)*
-logical_and    = equality ('&&' equality)*
+logical_or     = logical_and (('||' | 'or') logical_and)*
+logical_and    = equality (('&&' | 'and') equality)*
 equality       = comparison (('==' | '!=') comparison)*
-comparison     = bitwise_or (('<' | '>' | '<=' | '>=') bitwise_or)*
+comparison     = bitwise_or (comparison_op bitwise_or | 'is' pattern)*
+comparison_op  = '<' | '>' | '<=' | '>='
 bitwise_or     = bitwise_xor ('|' bitwise_xor)*
 bitwise_xor    = bitwise_and ('^' bitwise_and)*
 bitwise_and    = shift ('&' shift)*
@@ -827,9 +941,17 @@ primary        = grouped | tuple | literal | scoped_identifier | identifier
 
 grouped        = '(' expression ')'
 tuple          = '(' expression ',' expression (',' expression)* ')'
+
+pattern        = pattern_or
+pattern_or     = pattern_and ('or' pattern_and)*
+pattern_and    = pattern_not ('and' pattern_not)*
+pattern_not    = 'not' pattern_not | pattern_primary
+pattern_primary = literal | scoped_identifier | '(' pattern ')'
 ```
 
-A primary expression is one of:
+After `is`, an `and` or `or` that can continue the pattern belongs to that pattern. To combine the result with boolean `and` or `or`, put the complete test in parentheses: `(Name is null or empty) and IsEnabled`.
+
+Primary expressions use these forms:
 
 | Form | Examples | Notes |
 |------|----------|-------|
@@ -839,8 +961,8 @@ A primary expression is one of:
 | String literal | `""`, `"hello"` | Double-quoted, backslash escaping |
 | Boolean literal | `true`, `false` | |
 | Null literal | `null` | |
-| Empty literal | `empty` | Represents an empty/default collection |
-| Identifier | `Version`, `Flags`, `Count` | Any alphanumeric name (field or variable reference) |
+| Empty literal | `empty` | Produces a non-null empty value or parameterless instance of the expected type. See [Empty Values](#empty-values). |
+| Identifier | `Version`, `Flags`, `Count`, `IsGhost`, `value` | An alphanumeric field, variable, or readable property name. Inside a setter, `value` is the incoming value. |
 | Scoped identifier | `EItemType::Ornament` | `Qualifier::Member` for enum/flags values |
 | Grouped | `(Flags & (1 << 15))` | Parenthesized sub-expression |
 | Tuple | `(1, 1, 1)` | Comma-separated values in parentheses |
@@ -851,10 +973,10 @@ Operators are listed from lowest to highest precedence:
 
 | Precedence | Operators | Associativity | Meaning |
 |---|---|---|---|
-| 1 | `\|\|` | Left | Logical OR |
-| 2 | `&&` | Left | Logical AND |
+| 1 | `\|\|` `or` | Left | Logical OR |
+| 2 | `&&` `and` | Left | Logical AND |
 | 3 | `==` `!=` | Left | Equality |
-| 4 | `<` `>` `<=` `>=` | Left | Comparison |
+| 4 | `<` `>` `<=` `>=` `is` | Left | Comparison or pattern test |
 | 5 | `\|` | Left | Bitwise OR |
 | 6 | `^` | Left | Bitwise XOR |
 | 7 | `&` | Left | Bitwise AND |
@@ -863,12 +985,80 @@ Operators are listed from lowest to highest precedence:
 | 10 | `*` `/` | Left | Multiplication, division |
 | 11 | `!` `~` `-` | Right (unary) | Logical NOT, bitwise NOT, negation |
 
+Boolean `and` and `or` have the same meaning and precedence as `&&` and `||`. Both require boolean operands and short-circuit. `and` skips the right operand when the left is false. `or` skips it when the left is true.
+
+Within a pattern, `not` binds more tightly than `and`, and `and` binds more tightly than `or`. Use parentheses to group patterns. The keywords `is`, `not`, `and`, and `or` are lowercase and must be separate tokens.
+
+### Null and Empty Patterns
+
+`is` tests a value against a pattern and returns a boolean. It evaluates the value once. Literal patterns compare values. Scoped identifiers match the corresponding enum or flags value.
+
+Pattern `and` and `or` test the same value and short-circuit. `not` negates the following pattern.
+
+| Expression | Meaning |
+|---|---|
+| `Name is null` | `Name` is null. |
+| `Name is not null` | `Name` is non-null. |
+| `Name is empty` | `Name` is a non-null string of length zero. |
+| `Name is null or empty` | `Name` is null or a string of length zero. |
+| `Name is null or ""` | The same string test as `Name is null or empty`. |
+| `Items is empty` | `Items` is a non-null array of length zero. |
+| `Items is null or empty` | `Items` is null or an array of length zero. |
+| `Name is not (null or empty)` | `Name` is a non-null string with at least one character. |
+| `Name is not null and not empty` | The same test as `Name is not (null or empty)`. |
+
+The `empty` pattern checks the length of a non-null string or array. It never matches null and does not construct a value. Whitespace counts as string content. For arrays, only the length matters. Other types cannot use this pattern, even if they support `empty` as a value. The `""` pattern applies only to strings.
+
+`not` applies to the pattern immediately after it. `Name is not null or empty` means `Name is (not null) or empty`, so it matches every non-null string. To exclude both null and empty strings, use `Name is not (null or empty)`.
+
+Examples:
+
+```
+  if MaterialName is null or empty
+    CPlugMaterialUserInst MaterialUserInst
+
+  if (Name is not null and not empty) and IsEnabled
+    string Description
+
+  if (Items is null) or ForceReload
+    int ReloadVersion
+```
+
+### Empty Values
+
+As a value, `empty` creates a non-null value of the expected type:
+
+| Expected type | Value |
+|---|---|
+| String | An empty string, equivalent to `""`. |
+| Array | An array with zero elements. |
+| Other concrete type with a parameterless constructor | A fresh instance created by that constructor, equivalent to parameterless `new()` in the target language. |
+
+The field declaration, assignment target, or property's return type supplies the expected type. For a nullable type, `empty` creates a non-null value of the underlying type.
+
+`empty` is invalid if the expected type is unknown or has neither a supported empty value nor an accessible parameterless constructor. A fixed count array must still match its declared count, so it can use `empty` only when that count is zero.
+
+Each object created by `empty` is a fresh instance with its constructor defaults. Assigning `empty` replaces the previous value and does not share a mutable default instance.
+
+```
+string Name = empty
+string? OptionalName = empty // Non-null empty string.
+Material[] Materials = empty
+CPlugMaterialUserInst MaterialUserInst = empty
+```
+
+In a pattern, `Materials is empty` checks the array's length. It does not allocate an array or compare against a new instance.
+
 ### Examples
 
 ```
 Version >= 1
 (Flags & (1 << 15)) != 0
 MaterialName == null || MaterialName == ""
+MaterialName is null or empty
+MaterialName is null or ""
+(MaterialName is not null) and IsEnabled
+IsEnabled or ForceReload
 ItemType != EItemType::Ornament
 Flags & 0x1FFFF
 (1, 1, 1)
@@ -876,12 +1066,17 @@ Flags & 0x1FFFF
 
 ---
 
-## 17. Full File Example
+## 19. Full File Example
 
-The following illustrates a typical `.chunkl` file combining most language features:
+This `.chunkl` file combines chunks, a constructor, archives, version blocks, conditions, and an enum:
 
 ```
 CGameCtnBlock 0x03057000 // Block placed on a map.
+
+constructor
+  Direction = Direction::North
+  DecalIntensity = 1
+  DecalVariant = -1
 
 0x002 [TM10]
   ident BlockModel
@@ -923,7 +1118,7 @@ enum Direction
   West
 ```
 
-Another example showing version blocks, enums, and list fields:
+This example includes array fields and versioned chunks:
 
 ```
 CGameCtnMediaClip 0x03079000
@@ -944,7 +1139,7 @@ CGameCtnMediaClip 0x03079000
   int
 ```
 
-Another example showing archive inheritance and contextual archives:
+This example includes archive inheritance and contextual archives:
 
 ```
 CPlugCrystal 0x09003000
@@ -970,7 +1165,7 @@ enum EAxis
 
 archive Material
   string MaterialName
-  if MaterialName == null || MaterialName == ""
+  if MaterialName is null or empty
     CPlugMaterialUserInst MaterialUserInst
 
 archive Layer (contextual)
