@@ -92,17 +92,7 @@ jobs:
       - name: Publish to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: |
-          metadata=$(cargo metadata --no-deps --format-version 1 --locked)
-          crate=$(jq -r '.packages[0].name' <<< "$metadata")
-          version=$(jq -r '.packages[0].version' <<< "$metadata")
-          status=$(curl --silent --show-error --output "$RUNNER_TEMP/crate-version.json" --write-out '%{http_code}' "https://crates.io/api/v1/crates/$crate/$version")
-
-          case "$status" in
-            200) echo "$crate $version is already published; skipping upload." ;;
-            404) cargo publish --locked ;;
-            *) echo "Failed to check crates.io package version (HTTP $status)." >&2; exit 1 ;;
-          esac
+        run: cargo publish --locked
 
       - name: Upload Cargo package
         uses: actions/upload-artifact@v7
