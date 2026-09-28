@@ -223,6 +223,16 @@ Field declarations appear inside a chunk body or archive body, indented by one a
 - **Anonymous fields** have no name. Their value is read but not exposed.
 - An optional **(attribute list)** may follow the field name. It contains comma-separated flags (`name`) and key-value pairs (`name: value`). Both the name and value can contain spaces.
 
+### Repeated Named Fields
+
+Named fields in chunks and the self archive belong to the class. Repeating a name in these bodies refers to one stored member, including declarations inside version blocks, branches, and loops. Each declaration still reads or writes a value at its own position in the binary layout. Reading it replaces the member's current value; writing it uses that value.
+
+Each named archive has its own field scope. Its fields do not share storage with class fields or fields in other named archives. Repeating a name within that scope follows the same rules.
+
+Repeated declarations must agree on the type, cast target, nullability, chunk preference, and array shape. Uncast scalar integer fields may use different wire types: the stored member uses the widest declared integer type that can represent the full range of every declaration. If none of the declared types can do so, the declarations are invalid. For example, `short Flags` and `int Flags` share an `int` member. Each occurrence keeps its declared wire type, and writing a value outside that type's range is an error.
+
+A shared member has one inline default. Multiple declarations may repeat that default only when their expressions have identical syntax, ignoring whitespace outside string literals. Different defaults are invalid. The default is evaluated once, at the position of the first declaration that supplies it, according to the [initialization rules](#initialization-order). Version conditions and other control flow govern serialization, not which default applies. A constructor assignment to that member skips its inline default across all declarations.
+
 ### Special Keywords as Field Types
 
 The following are special keywords that generate control flow rather than a data field:
@@ -394,7 +404,17 @@ int?[Count] OptionalValues
 
 ## 10. Version Blocks
 
-A `version` or `versionb` field at the start of a chunk or archive body reads or writes the version number. Version blocks use this number to decide which fields to include.
+A `version` or `versionb` field reads or writes the current serialization version. It normally appears at the start of a chunk or archive body. Version blocks use the current version to decide which fields to include.
+
+### Version Source and Scope
+
+Each chunk has its own version context. A chunk must read or write `version` or `versionb` before reaching a version block. A version read in another chunk does not supply this context.
+
+Each archive invocation has its own version context, exposed as `v`. Its caller may explicitly supply a version without adding a version field to the archive's binary layout. A `version` or `versionb` declaration in the archive reads or writes a version field and replaces the current context. Calling a nested archive does not implicitly pass the enclosing version, the caller must supply it explicitly when needed. A nested archive's version does not change its caller's context.
+
+The `base` statement serializes inherited archive fields in the current archive's version context. If the base archive reads a version field, that version remains available to subsequent blocks in the derived archive. Inheriting an interface alone does not provide a version.
+
+Reaching a version block without a version established by a version field or explicitly supplied to the archive is invalid. There is no implicit version zero. Chunk qualifiers such as `[TM2020.v13]` describe observed versions and do not initialize the current serialization version.
 
 ### Version Condition Syntax
 
@@ -794,6 +814,8 @@ archive Key (inherits: IKey)
     float Opacity = 1
 ```
 
+`Key` uses `v` explicitly supplied by its caller for the `v1+` block. Its `IKey` interface does not establish that version.
+
 ### Self Archive
 
 An `archive` with no name optionally defines the serialization format for the class itself:
@@ -808,6 +830,8 @@ archive
   v1+
     int Flags
 ```
+
+This self archive also uses `v` explicitly supplied by its caller. Its binary layout starts with `Name`. A self archive can instead declare `version` or `versionb` when the binary layout includes a version field, as in the [full file example](#19-full-file-example).
 
 ---
 
@@ -829,7 +853,7 @@ constructor // optional comment
 
 Constructor assignments run once when the instance is created. If a constructor assignment targets a field, that field's inline default is skipped entirely. Its default expression is not evaluated or applied, even if the field declaration appears before the constructor.
 
-Apply inline defaults to the remaining fields, then run constructor assignments in source order. Fields omitted from the constructor keep their defaults.
+Apply inline defaults to the remaining fields in [initialization order](#initialization-order), then run constructor assignments in source order. Fields omitted from the constructor keep their defaults.
 
 The constructor does not declare fields or read or write binary data. Reading a chunk or self archive later can replace the initial values with values from the stream.
 
@@ -878,6 +902,26 @@ Material[] Materials = empty
 string Name = empty
 CPlugMaterialUserInst MaterialUserInst = empty
 ```
+
+### Initialization Order
+
+When a class instance is created:
+
+1. Initialize all stored members to their type defaults: zero for numeric and enum values, `false` for booleans, `null` for nullable and reference types, and member-wise type defaults for non-nullable composite value types.
+2. Evaluate and apply inline defaults in file source order, skipping members directly targeted by constructor assignments. For a [repeated field](#repeated-named-fields), use the position of the first declaration that supplies its default and evaluate it only once. Defaults inside serialization conditions still apply at this stage.
+3. Run constructor assignments in source order, including calls to property setters.
+
+An inline default reads the current values of any fields or properties it references. Forward references are allowed, but a later default or constructor assignment has not run yet. Reading a field does not evaluate its default on demand. Cyclic field dependencies do not cause recursive evaluation; each default runs once at its position.
+
+For example, these defaults leave both `A` and `B` equal to `1`: `A` reads the initial zero value of `B` before `B`'s inline default runs.
+
+```
+0x002
+  int A = B + 1
+  int B = 1
+```
+
+Named archives apply the same type-default and inline-default steps to their own members when created. The class constructor does not initialize members of a named archive.
 
 ### Computed Assignments
 
