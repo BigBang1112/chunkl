@@ -7,20 +7,26 @@ See the [language specification](../SPECIFICATION.md) for the full syntax.
 ## Features
 
 - A TextMate grammar highlights class headers, chunk offsets, attributes, version qualifiers, field types, control flow, and comments.
-- Completions suggest declarations, field types, control flow keywords, common class types, and attribute names.
+- Completions suggest declarations, control flow keywords, attribute names, and literal values (`true`, `false`, `null`, and `empty`).
+- Local enum and flags names are suggested in casts and expressions. Values are suggested as `Enum::Value`, or by member name after `Enum::`. Expressions also suggest previously declared fields in the current chunk or archive.
+- Basic keywords such as `archive`, `enum`, `if`, `while`, and `version` complete as plain text. Entries labeled `(snippet)` insert a declaration or block with editable placeholders.
 - Language configuration sets `//` as the line comment and closes brackets and quotes automatically. The grammar also highlights `#` comments.
 
-Completions come from fixed lists. The extension does not parse files or report diagnostics.
+Completions use the current line and a lightweight scan of the open file. The extension does not report diagnostics.
 
 The grammar and snippets support expression based fixed array counts and `while` blocks.
 
 ## Debugging
 
 1. Open the repository root in VS Code and run `npm ci` in `vscode-chunkl` once.
-2. Press **F5** and choose **Debug ChunkL extension**. The launch task compiles the extension and opens an Extension Development Host with `examples/debug.chunkl` available.
+2. Press **F5** and choose **Debug ChunkL extension**. The launch task compiles the extension, opens an Extension Development Host with the `examples` folder, and attaches to its inspector on `127.0.0.1:9333`.
 3. Open `debug.chunkl`, place a breakpoint in `src/completionProvider.ts`, and request completions with **Ctrl+Space**. Breakpoints map to TypeScript through source maps.
 
+Try completions after `wh` in a chunk body, `if `, `byte<`, or `Direction::`.
+
 After changing TypeScript, restart the debug session to recompile. After changing the grammar or language configuration, run **Developer: Reload Window** in the Extension Development Host.
+
+The explicit IPv4 address avoids a VS Code debugger connection failure on machines where `localhost` resolves to IPv6 (`::1`). If port 9333 is already in use, close the previous Extension Development Host before pressing **F5** again.
 
 ## Building and packaging
 

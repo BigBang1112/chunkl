@@ -7,6 +7,8 @@ export function activate(context: vscode.ExtensionContext): void {
     new ChunkLCompletionProvider(),
     "(",
     "<",
+    "[",
+    ":",
     " "
   );
   context.subscriptions.push(provider);

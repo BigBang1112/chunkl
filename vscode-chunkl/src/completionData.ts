@@ -1,23 +1,4 @@
-export const PRIMITIVE_TYPES: string[] = [
-  "int",
-  "uint",
-  "float",
-  "bool",
-  "string",
-  "byte",
-  "short",
-  "id",
-  "ident",
-  "vec2",
-  "vec3",
-  "vec4",
-  "iso4",
-  "timeint",
-  "timefloat",
-  "byte3",
-  "int3",
-  "transquat",
-];
+export const ROOT_KEYWORDS: string[] = ["archive", "enum", "flags"];
 
 export const CONTROL_KEYWORDS: string[] = [
   "version",
@@ -52,26 +33,6 @@ export const ATTRIBUTE_KEYWORDS: string[] = [
   "name:",
   "optional",
   "type:",
-];
-
-export const CLASS_TYPES: string[] = [
-  "CMwNod",
-  "CGameCtnBlock",
-  "CGameCtnBlockSkin",
-  "CGameCtnChallenge",
-  "CGameCtnGhost",
-  "CGameCtnMediaTrack",
-  "CGameCtnMediaClip",
-  "CGameItemPlacementParam",
-  "CGameWaypointSpecialProperty",
-  "CPlugBitmap",
-  "CPlugCharPhySpecialProperty",
-  "CPlugCrystal",
-  "CPlugGameSkin",
-  "CPlugMaterialUserInst",
-  "CPlugSolid2Model",
-  "CPlugSurface",
-  "CPlugTreeGenerator",
 ];
 
 export interface SnippetDef {
@@ -138,7 +99,7 @@ export const SNIPPETS: SnippetDef[] = [
   },
   {
     label: "fixed array",
-    insertText: "${1:int}[${2:Count * 2}] ${3:Values}",
+    insertText: "${1:Type}[${2:Count * 2}] ${3:Values}",
     detail: "Array with an expression count",
     scope: "field",
   },

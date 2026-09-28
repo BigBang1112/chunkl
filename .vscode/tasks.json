@@ -11,6 +11,21 @@
       },
       "group": "build",
       "problemMatcher": "$tsc"
+    },
+    {
+      "label": "Launch ChunkL extension host",
+      "type": "process",
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/.vscode/launchExtensionHost.js",
+        "${execPath}",
+        "${workspaceFolder}/vscode-chunkl",
+        "${workspaceFolder}/vscode-chunkl/examples",
+        "9333"
+      ],
+      "dependsOn": "Build ChunkL extension",
+      "dependsOrder": "sequence",
+      "problemMatcher": []
     }
   ]
 }
