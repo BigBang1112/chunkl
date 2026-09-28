@@ -197,9 +197,9 @@ jobs:
                 gh release upload "$RELEASE_TAG" "$asset"
               fi
             done
-            gh release edit "$RELEASE_TAG" --draft=false --notes-file "$RUNNER_TEMP/release-notes.md"
+            gh release edit "$RELEASE_TAG" --draft=false --title "${RELEASE_TAG#v}" --notes-file "$RUNNER_TEMP/release-notes.md"
           else
-            release_args=(--verify-tag --title "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md")
+            release_args=(--verify-tag --title "${RELEASE_TAG#v}" --notes-file "$RUNNER_TEMP/release-notes.md")
             if [[ "$RELEASE_TAG" == *-* ]]; then
               release_args+=(--prerelease)
             fi
