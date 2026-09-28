@@ -111,9 +111,55 @@ jobs:
           path: chunkl-rs/target/package/*.crate
           if-no-files-found: error
 
+  publish-vscode:
+    name: Publish VS Code extension
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vscode-chunkl
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: vscode-chunkl/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Package
+        run: |
+          mkdir -p ../artifacts/vscode
+          cp ../LICENSE.txt LICENSE.txt
+          version=$(node -p 'require("./package.json").version')
+          source_commit=$(git rev-parse HEAD)
+          npm run package -- --out "../artifacts/vscode/vscode-chunkl-${version}.vsix" \
+            --baseContentUrl "https://github.com/${GITHUB_REPOSITORY}/blob/${source_commit}/vscode-chunkl" \
+            --baseImagesUrl "https://github.com/${GITHUB_REPOSITORY}/raw/${source_commit}/vscode-chunkl"
+
+      - name: Publish to Visual Studio Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx --no-install vsce publish --packagePath ../artifacts/vscode/*.vsix --skip-duplicate
+
+      - name: Upload VS Code extension
+        uses: actions/upload-artifact@v7
+        with:
+          name: vscode-extension
+          path: artifacts/vscode/*.vsix
+          if-no-files-found: error
+
   release:
     name: Create GitHub release
-    needs: [publish-nuget, publish-cargo]
+    needs: [publish-nuget, publish-cargo, publish-vscode]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -136,11 +182,17 @@ jobs:
           name: cargo-package
           path: artifacts/cargo
 
+      - name: Download VS Code extension
+        uses: actions/download-artifact@v8
+        with:
+          name: vscode-extension
+          path: artifacts/vscode
+
       - name: Create or update release
         run: |
           printf '%s\n' "$RELEASE_BODY" > "$RUNNER_TEMP/release-notes.md"
           shopt -s nullglob
-          assets=(artifacts/nuget/*.nupkg artifacts/nuget/*.snupkg artifacts/cargo/*.crate)
+          assets=(artifacts/nuget/*.nupkg artifacts/nuget/*.snupkg artifacts/cargo/*.crate artifacts/vscode/*.vsix)
 
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber

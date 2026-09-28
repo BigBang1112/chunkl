@@ -3,7 +3,13 @@
   "displayName": "ChunkL",
   "description": "Language support for ChunkL (.chunkl) files",
   "version": "0.1.0",
-  "publisher": "bigbangstuff",
+  "publisher": "BigBang1112",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BigBang1112/chunkl.git",
+    "directory": "vscode-chunkl"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },

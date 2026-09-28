@@ -39,6 +39,8 @@ npm run package
 
 `npm run package` creates a `.vsix` file. Install it with **Extensions: Install from VSIX...** in VS Code.
 
+The [publish workflow](../.github/workflows/publish.yml) publishes the extension to Visual Studio Marketplace in parallel with the NuGet and Cargo packages, then attaches the `.vsix` to the GitHub release. It uses the version in `package.json` and the `BigBang1112` publisher. Configure the repository secret `VSCE_PAT` with a token that can publish under that publisher, following the [VS Code publishing guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#get-a-personal-access-token).
+
 ## License
 
 Licensed under the [MIT License](../LICENSE.txt).
