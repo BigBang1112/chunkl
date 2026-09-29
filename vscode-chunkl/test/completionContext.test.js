@@ -23,7 +23,7 @@ Module._load = function (request, parent, isMain) {
       },
       CompletionItemKind: {
         Property: 1, Keyword: 2, TypeParameter: 3, Class: 4,
-        Snippet: 5, Field: 6, Enum: 7, EnumMember: 8, Value: 9,
+        Snippet: 5, Field: 6, Enum: 7, EnumMember: 8, Value: 9, Operator: 10,
       },
     };
   }
@@ -195,6 +195,9 @@ test("properties offer casts and pattern operators in expressions", () => {
     assert.ok(completionsAt(expression, "  if Name is ").includes(keyword));
   }
   assert.ok(!completionsAt("Test 0x01000000\n0x001\n  if ", "  if ").includes("not"));
+  const negate = completionItemsAt("Test 0x01000000\n0x001\n  bool IsEnabled\n  if ", "  if ");
+  assert.equal(negate.find((item) => item.label === "!").kind, 10);
+  assert.ok(completionsAt("Test 0x01000000\n0x001\n  bool IsEnabled\n  if !", "  if !").includes("IsEnabled"));
   assert.ok(SNIPPETS.some((snippet) => snippet.label === "constructor" && snippet.scope === "root"));
   assert.ok(SNIPPETS.some((snippet) => snippet.label === "property" && snippet.scope === "root"));
 });
@@ -212,6 +215,8 @@ test("grammar highlights properties, accessors, constructors, and pattern operat
     assert.match(word, new RegExp(words.match));
   }
   assert.doesNotMatch("ordinary", new RegExp(words.match));
+  const operators = grammar.repository.expression.patterns.find((pattern) => pattern.name === "keyword.operator.chunkl");
+  assert.match("!IsEnabled", new RegExp(operators.match));
   assert.equal(grammar.injections["L:meta.setter.chunkl - comment - string"].patterns[0].name, "variable.parameter.setter.chunkl");
 });
 

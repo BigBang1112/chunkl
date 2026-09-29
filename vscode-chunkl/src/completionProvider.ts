@@ -54,6 +54,7 @@ export class ChunkLCompletionProvider implements vscode.CompletionItemProvider {
         ...["is", "and", "or", ...(/\bis\b/.test(textBeforeCursor) ? ["not"] : [])].map((keyword) =>
           keywordCompletion(keyword, "ChunkL expression operator")
         ),
+        completionItem("!", vscode.CompletionItemKind.Operator, "Negate a boolean expression"),
       ];
     }
 

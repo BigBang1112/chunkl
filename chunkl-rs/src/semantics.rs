@@ -713,7 +713,7 @@ impl PropertyValidator<'_, '_> {
                 .is_some_and(|k| k != "bool")
             {
                 self.diagnostics.push(Diagnostic::error(
-                    "Logical operators require boolean operands",
+                    "'!' requires a boolean operand",
                     position,
                 ));
             }

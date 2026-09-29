@@ -1031,6 +1031,8 @@ Operators are listed from lowest to highest precedence:
 
 Boolean `and` and `or` have the same meaning and precedence as `&&` and `||`. Both require boolean operands and short-circuit. `and` skips the right operand when the left is false. `or` skips it when the left is true.
 
+Unary `!` requires a boolean operand and returns its opposite: `!true` is `false`, and `!IsEnabled` is true when `IsEnabled` is false. It can be repeated (`!!IsEnabled`). Parenthesize a larger condition to negate its result, as in `!(IsEnabled && HasData)` or `!(Name is null)`.
+
 Within a pattern, `not` binds more tightly than `and`, and `and` binds more tightly than `or`. Use parentheses to group patterns. The keywords `is`, `not`, `and`, and `or` are lowercase and must be separate tokens.
 
 ### Null and Empty Patterns

@@ -55,6 +55,11 @@ public class SpecAdditionsTests
     [InlineData("Name is null or \"\"", "Name is null or \"\"")]
     [InlineData("(Name is null or empty) and IsEnabled", "(Name is null or empty) && IsEnabled")]
     [InlineData("IsEnabled or ForceReload and HasData", "IsEnabled || ForceReload && HasData")]
+    [InlineData("!true", "!true")]
+    [InlineData("!!IsEnabled", "!!IsEnabled")]
+    [InlineData("!IsEnabled or IsGhost", "!IsEnabled || IsGhost")]
+    [InlineData("!(IsEnabled and HasData)", "!(IsEnabled && HasData)")]
+    [InlineData("!(Name is null)", "!(Name is null)")]
     [InlineData("Name is null or empty and not null", "Name is null or empty and not null")]
     public void ExpressionsRetainTheirFullMeaning(string expression, string expected)
     {
@@ -62,6 +67,26 @@ public class SpecAdditionsTests
         var condition = Assert.IsType<IfStatement>(file.Chunks[0].Body[0]).Condition;
         Assert.Equal(expected, ChunkLParser.WriteExpression(condition));
         Assert.Equal(ChunkLParser.Write(file), ChunkLParser.Write(Parse(ChunkLParser.Write(file))));
+    }
+
+    [Fact]
+    public void LogicalNotWorksOnBooleanFieldsAndConditions()
+    {
+        var file = Parse("""
+            Test 0x01000000
+            0x001
+              bool IsEnabled = !false
+              if !IsEnabled
+                bool WasDisabled = !!IsEnabled
+              else if !(IsEnabled && true)
+                bool MaybeDisabled
+              assert !IsEnabled
+            """);
+        var branch = Assert.IsType<IfStatement>(file.Chunks[0].Body[1]);
+        Assert.Equal(UnaryOperator.Not, Assert.IsType<UnaryExpression>(branch.Condition).Operator);
+        Assert.True(ChunkLParser.Analyze(file).Success);
+        var written = ChunkLParser.Write(file);
+        Assert.Equal(written, ChunkLParser.Write(Parse(written)));
     }
 
     [Theory]
@@ -139,6 +164,7 @@ public class SpecAdditionsTests
     [InlineData("property bool Flag\n  get = Missing\n", "Unknown")]
     [InlineData("property int P\n  set\n    if value is empty\n      Flags = 0\n0x001\n  int Flags\n", "empty pattern")]
     [InlineData("0x001\n  int Flags\n  if Flags or true\n    int Data\n", "boolean operands")]
+    [InlineData("0x001\n  int Flags\n  if !Flags\n    int Data\n", "'!' requires a boolean operand")]
     [InlineData("0x001\n  int[] Items\n  if Items is \"\"\n    int Data\n", "requires a string")]
     [InlineData("archive Named\n  int Flags\n  if Flags is empty\n    int Data\n", "empty pattern")]
     [InlineData("property int P\n  get = 1\narchive Named\n  if P == 1\n    int Data\n", "Class properties")]
