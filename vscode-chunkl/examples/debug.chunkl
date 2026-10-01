@@ -6,19 +6,19 @@ constructor
   IsNorth = true
 
 property bool IsNorth
-  get = Facing == Direction::North
+  get = Facing == Direction.North
   set
     if value
-      Facing = Direction::North
+      Facing = Direction.North
     else
-      Facing = Direction::South
+      Facing = Direction.South
 
 0x001
   int Width
   int Height
   byte<Direction> Facing
   int[Width * Height] Pixels
-  if Facing == Direction::North
+  if Facing == Direction.North
     int NorthOnly
   byte HasNext
   while HasNext != 0 // Read until the terminating flag.

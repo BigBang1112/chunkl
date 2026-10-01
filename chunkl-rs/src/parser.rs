@@ -545,7 +545,7 @@ impl<'a> Parser<'a> {
         }
         BodyStatement::Field(FieldDeclaration {
             range: line_range(line),
-            ty: parse_type(type_text),
+            ty: self.validated_type(type_text, line.number),
             name,
             default_value,
             default_value_source: split_assignment(without_attributes)
@@ -592,7 +592,7 @@ impl<'a> Parser<'a> {
             );
         }
         let mut property = PropertyDeclaration {
-            ty: parse_type(type_text),
+            ty: self.validated_type(type_text, line.number),
             name: remainder
                 .split_whitespace()
                 .next()
@@ -704,6 +704,14 @@ impl<'a> Parser<'a> {
                 d
             }));
         expression
+    }
+
+    fn validated_type(&mut self, text: &str, line: usize) -> TypeReference {
+        let ty = parse_type(text);
+        for count in ty.array_counts.iter().flatten() {
+            self.expression(count, line);
+        }
+        ty
     }
 
     fn current(&self) -> Option<Line<'a>> {

@@ -386,13 +386,15 @@ int Count
 int Width
 int Height
 int NumSamples
+CHeader Header
 vec3[Count] Points
+byte[Header.Count] Payload
 short[Count * 2] PackedSamples
 int[Width * Height] IconPixels
 int[NumSamples - 1] SampleOffsets
 ```
 
-The count expression is evaluated once, immediately before the array is read or written. It must produce a non-negative integer. A fixed count array has no additional count prefix in the binary stream. Spaces inside the brackets are allowed; `short[Count * 2]` is one type declaration.
+The count expression is evaluated once, immediately before the array is read or written. It must produce a non-negative integer. A fixed count array has no additional count prefix in the binary stream. Spaces inside the brackets are allowed; `short[Count * 2]` is one type declaration. Use `.` to access a member in a count, as in `byte[Header.Count]`.
 
 Fixed count and nullable elements may be combined:
 ```
@@ -491,9 +493,9 @@ Examples:
     id Author
     CGameCtnBlockSkin Skin
 
-  if ItemType != EItemType::Ornament
+  if ItemType != EItemType.Ornament
     int SlotCost
-  else if ItemType == EItemType::Character
+  else if ItemType == EItemType.Character
     bool IsPlayable
   else
     int UnknownData
@@ -649,9 +651,9 @@ Dispatches to one of several field blocks based on the value of an expression:
 Examples:
 ```
   switch ItemType
-    case EItemType::Ornament
+    case EItemType.Ornament
       int SlotCost
-    case EItemType::Character
+    case EItemType.Character
       bool IsPlayable
     default
       int UnknownData
@@ -981,7 +983,8 @@ shift          = additive (('<<' | '>>') additive)*
 additive       = multiplicative (('+' | '-') multiplicative)*
 multiplicative = unary (('*' | '/') unary)*
 unary          = ('!' | '~' | '-') unary | primary
-primary        = grouped | tuple | literal | scoped_identifier | identifier
+primary        = grouped | tuple | literal | member_access | identifier
+member_access  = identifier ('.' identifier)+
 
 grouped        = '(' expression ')'
 tuple          = '(' expression ',' expression (',' expression)* ')'
@@ -990,7 +993,7 @@ pattern        = pattern_or
 pattern_or     = pattern_and ('or' pattern_and)*
 pattern_and    = pattern_not ('and' pattern_not)*
 pattern_not    = 'not' pattern_not | pattern_primary
-pattern_primary = literal | scoped_identifier | '(' pattern ')'
+pattern_primary = literal | member_access | '(' pattern ')'
 ```
 
 After `is`, an `and` or `or` that can continue the pattern belongs to that pattern. To combine the result with boolean `and` or `or`, put the complete test in parentheses: `(Name is null or empty) and IsEnabled`.
@@ -1007,7 +1010,7 @@ Primary expressions use these forms:
 | Null literal | `null` | |
 | Empty literal | `empty` | Produces a non-null empty value or parameterless instance of the expected type. See [Empty Values](#empty-values). |
 | Identifier | `Version`, `Flags`, `Count`, `IsGhost`, `value` | An alphanumeric field, variable, or readable property name. Inside a setter, `value` is the incoming value. |
-| Scoped identifier | `EItemType::Ornament` | `Qualifier::Member` for enum/flags values |
+| Member access | `EItemType.Ornament`, `Header.Count` | `.` accesses an enum/flags value or a readable member. Multiple segments are allowed. |
 | Grouped | `(Flags & (1 << 15))` | Parenthesized sub-expression |
 | Tuple | `(1, 1, 1)` | Comma-separated values in parentheses |
 
@@ -1037,7 +1040,7 @@ Within a pattern, `not` binds more tightly than `and`, and `and` binds more tigh
 
 ### Null and Empty Patterns
 
-`is` tests a value against a pattern and returns a boolean. It evaluates the value once. Literal patterns compare values. Scoped identifiers match the corresponding enum or flags value.
+`is` tests a value against a pattern and returns a boolean. It evaluates the value once. Literal patterns compare values. Dotted enum or flags members match the corresponding value.
 
 Pattern `and` and `or` test the same value and short-circuit. `not` negates the following pattern.
 
@@ -1105,7 +1108,7 @@ MaterialName is null or empty
 MaterialName is null or ""
 (MaterialName is not null) and IsEnabled
 IsEnabled or ForceReload
-ItemType != EItemType::Ornament
+ItemType != EItemType.Ornament
 Flags & 0x1FFFF
 (1, 1, 1)
 ```
@@ -1120,7 +1123,7 @@ This `.chunkl` file combines chunks, a constructor, archives, version blocks, co
 CGameCtnBlock 0x03057000 // Block placed on a map.
 
 constructor
-  Direction = Direction::North
+  Direction = Direction.North
   DecalIntensity = 1
   DecalVariant = -1
 

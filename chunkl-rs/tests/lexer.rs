@@ -17,13 +17,13 @@ fn tokenizes_literals_comments_and_positions() {
 
 #[test]
 fn tokenizes_all_multi_character_operators() {
-    let kinds: Vec<_> = Lexer::new("== != <= >= << >> :: .. && ||")
+    let kinds: Vec<_> = Lexer::new("== != <= >= << >> .. && ||")
         .tokenize()
         .into_iter()
         .map(|token| token.kind)
         .collect();
     assert_eq!(
-        &kinds[..10],
+        &kinds[..9],
         &[
             TokenKind::EqualsEquals,
             TokenKind::BangEquals,
@@ -31,7 +31,6 @@ fn tokenizes_all_multi_character_operators() {
             TokenKind::GreaterThanEquals,
             TokenKind::LessLess,
             TokenKind::GreaterGreater,
-            TokenKind::ColonColon,
             TokenKind::DotDot,
             TokenKind::AmpersandAmpersand,
             TokenKind::PipePipe,

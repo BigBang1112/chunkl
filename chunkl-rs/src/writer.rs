@@ -454,7 +454,7 @@ impl Writer<'_> {
             Expression::Identifier(name) => self.output.push_str(name),
             Expression::ScopedIdentifier { qualifier, name } => {
                 self.output.push_str(qualifier);
-                self.output.push_str("::");
+                self.output.push('.');
                 self.output.push_str(name);
             }
             Expression::Unary { operator, operand } => {

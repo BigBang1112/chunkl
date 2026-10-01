@@ -486,11 +486,11 @@
           "name": "constant.language.null.chunkl"
         },
         {
-          "match": "(\\w+)(::)(\\w+)",
+          "match": "([A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*)(\\.)([A-Za-z_]\\w*)",
           "captures": {
-            "1": { "name": "entity.name.type.namespace.chunkl" },
-            "2": { "name": "punctuation.accessor.scope-resolution.chunkl" },
-            "3": { "name": "variable.other.enummember.chunkl" }
+            "1": { "name": "variable.other.qualifier.chunkl" },
+            "2": { "name": "punctuation.accessor.member.chunkl" },
+            "3": { "name": "variable.other.member.chunkl" }
           }
         },
         {

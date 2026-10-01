@@ -8,7 +8,7 @@ See the [language specification](../SPECIFICATION.md) for the full syntax.
 
 - A TextMate grammar highlights class headers, chunk offsets, attributes, version qualifiers, field types, constructors, properties, accessors, control flow, patterns, and comments.
 - Completions suggest declarations, control flow keywords, attribute names, expression operators (`is`, `not`, `and`, and `or`), and literal values (`true`, `false`, `null`, and `empty`).
-- Local enum and flags names are suggested in casts and expressions. Values are suggested as `Enum::Value`, or by member name after `Enum::`. Class fields and readable properties are available across chunks, the self archive, constructors, and accessors, including forward declarations. Named archives keep their own field scope.
+- Local enum and flags names are suggested in casts and expressions. Values are suggested as `Enum.Value`, or by member name after `Enum.`. Class fields and readable properties are available across chunks, the self archive, constructors, and accessors, including forward declarations. Named archives keep their own field scope.
 - Constructor and setter assignment targets include writable members. Property bodies suggest `get` and `set`; setters also suggest the incoming `value` and supported control flow. Archive expressions suggest `v`, while versioned chunk expressions suggest `Version`.
 - Basic keywords such as `archive`, `enum`, `if`, `while`, and `version` complete as plain text. Entries labeled `(snippet)` insert a declaration or block with editable placeholders.
 - Language configuration sets `//` as the line comment and closes brackets and quotes automatically. The grammar also highlights `#` comments.
@@ -23,7 +23,7 @@ The grammar and snippets support expression based fixed array counts, `while` bl
 2. Press **F5** and choose **Debug ChunkL extension**. The launch task compiles the extension, opens an Extension Development Host with the `examples` folder, and attaches to its inspector on `127.0.0.1:9333`.
 3. Open `debug.chunkl`, place a breakpoint in `src/completionProvider.ts`, and request completions with **Ctrl+Space**. Breakpoints map to TypeScript through source maps.
 
-Try completions after `wh` in a chunk body, `if `, `byte<`, or `Direction::`.
+Try completions after `wh` in a chunk body, `if `, `byte<`, or `Direction.`.
 
 After changing TypeScript, restart the debug session to recompile. After changing the grammar or language configuration, run **Developer: Reload Window** in the Extension Development Host.
 
