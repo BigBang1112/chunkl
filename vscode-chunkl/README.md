@@ -12,8 +12,9 @@ See the [language specification](../SPECIFICATION.md) for the full syntax.
 - Constructor and setter assignment targets include writable members. Property bodies suggest `get` and `set`; setters also suggest the incoming `value` and supported control flow. Archive expressions suggest `v`, while versioned chunk expressions suggest `Version`.
 - Basic keywords such as `archive`, `enum`, `if`, `while`, and `version` complete as plain text. Entries labeled `(snippet)` insert a declaration or block with editable placeholders.
 - Language configuration sets `//` as the line comment and closes brackets and quotes automatically. The grammar also highlights `#` comments.
+- Diagnostics update as a document is opened or edited. They cover malformed headers and declarations, indentation, enum and flags members, missing expressions, unmatched brackets, unterminated strings, and the old `::` accessor spelling.
 
-Completions use the current line and a lightweight scan of the open file. The extension does not report diagnostics.
+Completions and diagnostics use lightweight scans of the open file. The diagnostics cover common syntax mistakes; full parsing and semantic validation are available from the .NET and Rust libraries.
 
 The grammar and snippets support expression based fixed array counts, `while` blocks, constructors, and computed properties. Repeated field names appear once in completions, with compatible integer wire types resolved to a common storage type.
 
