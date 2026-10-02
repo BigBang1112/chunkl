@@ -628,7 +628,7 @@ public sealed class ChunkLWriter
                 break;
             case ScopedIdentifierExpression scoped:
                 _sb.Append(scoped.Qualifier);
-                _sb.Append("::");
+                _sb.Append('.');
                 _sb.Append(scoped.Name);
                 break;
             case UnaryExpression unary:

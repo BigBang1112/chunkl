@@ -161,7 +161,7 @@ impl<'a> ExprParser<'a> {
                     || self
                         .tokens
                         .get(self.pos + offset + 1)
-                        .is_some_and(|t| t.kind == TokenKind::ColonColon)
+                        .is_some_and(|t| t.kind == TokenKind::Dot)
             }
             _ => false,
         }
@@ -386,17 +386,29 @@ impl<'a> ExprParser<'a> {
                     "null" => Expression::Literal(Literal::Null),
                     "empty" => Expression::Literal(Literal::Empty),
                     _ => {
-                        // Check for scoped identifier: Ident::Ident
-                        if self.kind() == TokenKind::ColonColon {
-                            self.advance(); // ::
-                            let member = if self.kind() == TokenKind::Identifier {
+                        // Check for dotted member access: Ident.Ident
+                        if self.kind() == TokenKind::Dot {
+                            self.advance(); // .
+                            let mut member = if self.kind() == TokenKind::Identifier {
                                 self.advance()
                             } else {
-                                self.error("Expected an enum or flags member after '::'");
+                                self.error("Expected a member after '.'");
                                 String::new()
                             };
+                            let mut qualifier = text;
+                            while self.kind() == TokenKind::Dot {
+                                qualifier.push('.');
+                                qualifier.push_str(&member);
+                                self.advance();
+                                member = if self.kind() == TokenKind::Identifier {
+                                    self.advance()
+                                } else {
+                                    self.error("Expected a member after '.'");
+                                    String::new()
+                                };
+                            }
                             Expression::ScopedIdentifier {
-                                qualifier: text,
+                                qualifier,
                                 name: member,
                             }
                         } else {

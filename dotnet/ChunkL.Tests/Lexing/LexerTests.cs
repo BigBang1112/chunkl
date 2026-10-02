@@ -66,17 +66,16 @@ public class LexerTests
     [Fact]
     public void Tokenize_MultiCharOperators()
     {
-        var tokens = Tokenize("== != <= >= << >> :: .. && ||");
+        var tokens = Tokenize("== != <= >= << >> .. && ||");
         Assert.Equal(TokenKind.EqualsEquals, tokens[0].Kind);
         Assert.Equal(TokenKind.BangEquals, tokens[1].Kind);
         Assert.Equal(TokenKind.LessThanEquals, tokens[2].Kind);
         Assert.Equal(TokenKind.GreaterThanEquals, tokens[3].Kind);
         Assert.Equal(TokenKind.LessLess, tokens[4].Kind);
         Assert.Equal(TokenKind.GreaterGreater, tokens[5].Kind);
-        Assert.Equal(TokenKind.ColonColon, tokens[6].Kind);
-        Assert.Equal(TokenKind.DotDot, tokens[7].Kind);
-        Assert.Equal(TokenKind.AmpersandAmpersand, tokens[8].Kind);
-        Assert.Equal(TokenKind.PipePipe, tokens[9].Kind);
+        Assert.Equal(TokenKind.DotDot, tokens[6].Kind);
+        Assert.Equal(TokenKind.AmpersandAmpersand, tokens[7].Kind);
+        Assert.Equal(TokenKind.PipePipe, tokens[8].Kind);
     }
 
     [Fact]

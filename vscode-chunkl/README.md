@@ -1,47 +1,58 @@
 # ChunkL for Visual Studio Code
 
-The VS Code extension adds syntax highlighting and completions for [ChunkL](../README.md) (`.chunkl`) files.
+Syntax highlighting, completions, and snippets for [ChunkL](https://github.com/BigBang1112/chunkl) (`.chunkl`) files.
 
-See the [language specification](../SPECIFICATION.md) for the full syntax.
+ChunkL describes the binary layout of classes through chunks, archives, and version conditions. This extension helps you write and edit those definitions in VS Code.
 
 ## Features
 
-- A TextMate grammar highlights class headers, chunk offsets, attributes, version qualifiers, field types, constructors, properties, accessors, control flow, patterns, and comments.
-- Completions suggest declarations, control flow keywords, attribute names, expression operators (`is`, `not`, `and`, and `or`), and literal values (`true`, `false`, `null`, and `empty`).
-- Local enum and flags names are suggested in casts and expressions. Values are suggested as `Enum::Value`, or by member name after `Enum::`. Class fields and readable properties are available across chunks, the self archive, constructors, and accessors, including forward declarations. Named archives keep their own field scope.
-- Constructor and setter assignment targets include writable members. Property bodies suggest `get` and `set`; setters also suggest the incoming `value` and supported control flow. Archive expressions suggest `v`, while versioned chunk expressions suggest `Version`.
-- Basic keywords such as `archive`, `enum`, `if`, `while`, and `version` complete as plain text. Entries labeled `(snippet)` insert a declaration or block with editable placeholders.
-- Language configuration sets `//` as the line comment and closes brackets and quotes automatically. The grammar also highlights `#` comments.
+- **Syntax highlighting** for class headers, chunks, archives, field types, attributes, version conditions, constructors, properties, control flow, and comments.
+- **Context-aware completions** for keywords, types, attributes, operators, and literal values, including `is`, `not`, `and`, `or`, and `!` in expressions.
+- **Field and property suggestions** from declarations in the current file, including declarations that appear later. Named archives have their own field scope, and assignment suggestions include writable members.
+- **Enum and flags completions** for type names and dotted values such as `Direction.North`. Typing `Direction.` in an expression suggests its members.
+- **Snippets** for chunks, archives, enums, flags, constructors, properties, loops, conditionals, and version blocks, with editable placeholders.
+- **Editing support** for line comments, automatic bracket and quote closing, and indentation.
+- **Syntax diagnostics** for common errors such as invalid headers, indentation, missing expressions, unterminated strings, unmatched brackets, and incorrect member access.
 
-Completions use the current line and a lightweight scan of the open file. The extension does not report diagnostics.
+Requires VS Code **1.85 or later**.
 
-The grammar and snippets support expression based fixed array counts, `while` blocks, constructors, and computed properties. Repeated field names appear once in completions, with compatible integer wire types resolved to a common storage type.
+## Example
 
-## Debugging
+```chunkl
+CGameCtnBlock 0x03057000 // Block placed on a map.
 
-1. Open the repository root in VS Code and run `npm ci` in `vscode-chunkl` once.
-2. Press **F5** and choose **Debug ChunkL extension**. The launch task compiles the extension, opens an Extension Development Host with the `examples` folder, and attaches to its inspector on `127.0.0.1:9333`.
-3. Open `debug.chunkl`, place a breakpoint in `src/completionProvider.ts`, and request completions with **Ctrl+Space**. Breakpoints map to TypeScript through source maps.
+constructor
+  Direction = Direction.North
 
-Try completions after `wh` in a chunk body, `if `, `byte<`, or `Direction::`.
+0x002 [TM10]
+  ident BlockModel
+  byte<Direction> Direction
+  byte3 Coord
+  int Flags
 
-After changing TypeScript, restart the debug session to recompile. After changing the grammar or language configuration, run **Developer: Reload Window** in the Extension Development Host.
+archive
+  version
+  id Name
+  v0=
+    short Flags
+  v1+
+    int Flags
 
-The explicit IPv4 address avoids a VS Code debugger connection failure on machines where `localhost` resolves to IPv6 (`::1`). If port 9333 is already in use, close the previous Extension Development Host before pressing **F5** again.
-
-## Building and packaging
-
-```sh
-npm ci
-npm run compile
-npm test
-npm run package
+enum Direction
+  North
+  East
+  South
+  West
 ```
 
-`npm run package` creates a `.vsix` file. Install it with **Extensions: Install from VSIX...** in VS Code.
+See the [language specification](https://github.com/BigBang1112/chunkl/blob/main/SPECIFICATION.md) for the full syntax.
 
-The [publish workflow](../.github/workflows/publish.yml) publishes the extension to Visual Studio Marketplace in parallel with the NuGet and Cargo packages, then attaches the `.vsix` to the GitHub release. It uses the version in `package.json` and the `BigBang1112` publisher. Configure the repository secret `VSCE_PAT` with a token that can publish under that publisher, following the [VS Code publishing guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#get-a-personal-access-token).
+## Support
+
+Completions and syntax checks use the current file. For full parsing and semantic validation, see the [ChunkL libraries](https://github.com/BigBang1112/chunkl#net-library).
+
+Report bugs or request features on [GitHub Issues](https://github.com/BigBang1112/chunkl/issues). The source code is available in the [ChunkL repository](https://github.com/BigBang1112/chunkl/tree/main/vscode-chunkl).
 
 ## License
 
-Licensed under the [MIT License](../LICENSE.txt).
+Licensed under the [MIT License](https://github.com/BigBang1112/chunkl/blob/main/LICENSE.txt).

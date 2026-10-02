@@ -1,5 +1,6 @@
 use chunkl::{
-    BinaryOp, BodyStatement, Expression, Pattern, analyze, parse_source, write, write_expression,
+    BinaryOp, BodyStatement, Expression, Pattern, UnaryOp, analyze, parse_source, write,
+    write_expression,
 };
 
 fn parse(source: &str) -> chunkl::ChunkLFile {
@@ -150,10 +151,24 @@ fn patterns_and_boolean_keywords_retain_full_meaning() {
             "IsEnabled or ForceReload and HasData",
             "IsEnabled || ForceReload && HasData",
         ),
+        ("!true", "!true"),
+        ("!!IsEnabled", "!!IsEnabled"),
+        ("!IsEnabled or IsGhost", "!IsEnabled || IsGhost"),
+        ("!(IsEnabled and HasData)", "!(IsEnabled && HasData)"),
+        ("!(Name is null)", "!(Name is null)"),
         (
             "Name is null or empty and not null",
             "Name is null or empty and not null",
         ),
+        (
+            "ItemType == EItemType.Ornament",
+            "ItemType == EItemType.Ornament",
+        ),
+        (
+            "ItemType is EItemType.Ornament",
+            "ItemType is EItemType.Ornament",
+        ),
+        ("Header.Size.Count > 0", "Header.Size.Count > 0"),
     ] {
         let file = parse(&format!(
             "Test 0x01000000\n0x001\n  if {expression}\n    int Data\n"
@@ -164,6 +179,27 @@ fn patterns_and_boolean_keywords_retain_full_meaning() {
         assert_eq!(write_expression(&branch.condition), expected);
         assert_eq!(write(&parse(&write(&file))), write(&file));
     }
+}
+
+#[test]
+fn logical_not_works_on_boolean_fields_and_conditions() {
+    let file = parse(
+        "Test 0x01000000\n0x001\n  bool IsEnabled = !false\n  if !IsEnabled\n    bool WasDisabled = !!IsEnabled\n  else if !(IsEnabled && true)\n    bool MaybeDisabled\n  assert !IsEnabled\n",
+    );
+    let BodyStatement::If(branch) = &file.chunks[0].body[1] else {
+        panic!()
+    };
+    assert!(matches!(
+        branch.condition,
+        Expression::Unary {
+            operator: UnaryOp::Not,
+            ..
+        }
+    ));
+    let model = analyze(&file);
+    assert!(model.success(), "{:?}", model.diagnostics);
+    let written = write(&file);
+    assert_eq!(written, write(&parse(&written)));
 }
 
 #[test]
@@ -188,7 +224,9 @@ fn malformed_new_syntax_reports_diagnostics() {
         "0x001\n  if true nonsense\n    int Data\n",
         "property 42 Flag\n  get = true\n",
         "property string Name\n  get = \"unterminated\n",
-        "0x001\n  if Kind is Direction::\n    int Data\n",
+        "0x001\n  if Kind is Direction.\n    int Data\n",
+        "0x001\n  if Kind is Direction::North\n    int Data\n",
+        "0x001\n  int[Header::Count] Data\n",
     ] {
         let result = parse_source(&format!("Test 0x01000000\n{declarations}"));
         assert!(!result.success(), "Accepted invalid source: {declarations}");
@@ -285,6 +323,10 @@ fn local_semantic_errors_are_separate_from_syntax() {
         (
             "0x001\n  int Flags\n  if Flags or true\n    int Data\n",
             "boolean operands",
+        ),
+        (
+            "0x001\n  int Flags\n  if !Flags\n    int Data\n",
+            "'!' requires a boolean operand",
         ),
         (
             "0x001\n  int[] Items\n  if Items is \"\"\n    int Data\n",

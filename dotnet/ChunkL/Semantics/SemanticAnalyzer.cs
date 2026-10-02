@@ -332,7 +332,7 @@ public static class SemanticAnalyzer
             }
             if (expression is UnaryExpression { Operator: UnaryOperator.Not } negated &&
                 InferKind(negated.Operand, incomingType) is string operandKind && operandKind != "bool")
-                diagnostics.ReportError("Logical operators require boolean operands", position);
+                diagnostics.ReportError("'!' requires a boolean operand", position);
             foreach (var child in ExpressionChildren(expression)) CheckPatterns(child, position, incomingType);
         }
 

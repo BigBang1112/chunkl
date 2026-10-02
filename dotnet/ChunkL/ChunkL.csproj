@@ -2,13 +2,16 @@
 
     <PropertyGroup>
         <Authors>BigBang1112</Authors>
-        <Version>1.1.0</Version>
+        <Version>1.2.0</Version>
         <Description>A library handling ChunkL, a standard for serialized objects represented in binary data chunks that are backwards compatible.</Description>
         <Copyright>Copyright (c) 2024-2026 Petr Pivoňka</Copyright>
         <PackageProjectUrl>https://github.com/BigBang1112/chunkl</PackageProjectUrl>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageTags>gbx, trackmania, maniaplanet, gamebox, net, chunk</PackageTags>
-        <PackageReleaseNotes></PackageReleaseNotes>
+        <PackageReleaseNotes>
+- Added dot support for member access
+- Removed colon-colon support
+        </PackageReleaseNotes>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
     </PropertyGroup>
 

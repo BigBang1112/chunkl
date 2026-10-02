@@ -255,11 +255,6 @@ public sealed class Lexer
                 return new Token(TokenKind.Comma, ",", new SourcePosition(_line, _column - 1), _leadingSpaces, start, 1);
 
             case ':':
-                if (_pos + 1 < _source.Length && _source[_pos + 1] == ':')
-                {
-                    Advance(); Advance();
-                    return new Token(TokenKind.ColonColon, "::", new SourcePosition(_line, _column - 2), _leadingSpaces, start, 2);
-                }
                 Advance();
                 return new Token(TokenKind.Colon, ":", new SourcePosition(_line, _column - 1), _leadingSpaces, start, 1);
 

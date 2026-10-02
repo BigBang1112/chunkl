@@ -23,7 +23,7 @@ Module._load = function (request, parent, isMain) {
       },
       CompletionItemKind: {
         Property: 1, Keyword: 2, TypeParameter: 3, Class: 4,
-        Snippet: 5, Field: 6, Enum: 7, EnumMember: 8, Value: 9,
+        Snippet: 5, Field: 6, Enum: 7, EnumMember: 8, Value: 9, Operator: 10,
       },
     };
   }
@@ -91,7 +91,10 @@ test("recognizes expression and type completion positions", () => {
   assert.deepEqual(getCompletionContext("  int[Width * "), { kind: "expression" });
   assert.deepEqual(getCompletionContext("  while HasNext != "), { kind: "expression" });
   assert.deepEqual(getCompletionContext("  byte<Dire"), { kind: "cast" });
-  assert.deepEqual(getCompletionContext("  if Direction::N"), { kind: "enum-member", typeName: "Direction" });
+  assert.deepEqual(getCompletionContext("  byte<Namespace.Dire"), { kind: "cast" });
+  assert.deepEqual(getCompletionContext("  Namespace.Type Field"), { kind: "field" });
+  assert.deepEqual(getCompletionContext("  if Direction.N"), { kind: "enum-member", typeName: "Direction" });
+  assert.deepEqual(getCompletionContext("  int[Direction.N"), { kind: "enum-member", typeName: "Direction" });
   assert.deepEqual(getCompletionContext("  if Name == \"North"), { kind: "none" });
   assert.deepEqual(getCompletionContext("  int Value // ("), { kind: "none" });
 });
@@ -99,16 +102,17 @@ test("recognizes expression and type completion positions", () => {
 test("provider suggests local enums and fields without class or other type names", () => {
   const source = [
     "Test 0x01000000", "0x001", "  int OldField", "0x002", "  int Width",
-    "  CPlugMaterial Material", "  byte<", "  if Direction::", "  if Options::", "  while ",
-    "  int[Width * ", "enum Direction", "  North", "  South",
+    "  CPlugMaterial Material", "  byte<", "  if Direction.", "  if Options.", "  while ",
+    "  int[Width * ", "  int[Direction.", "enum Direction", "  North", "  South",
     "flags Options", "  Enabled[0]", "",
   ].join("\n");
   assert.deepEqual(completionsAt(source, "  byte<"), ["Direction", "Options"]);
-  assert.deepEqual(completionsAt(source, "  if Direction::"), ["North", "South"]);
-  assert.deepEqual(completionsAt(source, "  if Options::"), ["Enabled"]);
+  assert.deepEqual(completionsAt(source, "  if Direction."), ["North", "South"]);
+  assert.deepEqual(completionsAt(source, "  int[Direction."), ["North", "South"]);
+  assert.deepEqual(completionsAt(source, "  if Options."), ["Enabled"]);
   for (const line of ["  while ", "  int[Width * "]) {
     const labels = completionsAt(source, line);
-    for (const name of ["Width", "OldField", "Material", "Direction", "Options", "Direction::North", "Options::Enabled", "true", "false", "null", "empty"]) {
+    for (const name of ["Width", "OldField", "Material", "Direction", "Options", "Direction.North", "Options.Enabled", "true", "false", "null", "empty"]) {
       assert.ok(labels.includes(name), `${name} missing at ${line}`);
     }
     for (const name of ["int", "vec3", "CMwNod", "CPlugMaterial"]) {
@@ -135,8 +139,8 @@ test("class fields include forward declarations while named archives keep their 
   assert.ok(expression.includes("v"));
   assert.ok(!expression.includes("Version"));
   assert.ok(expression.includes("Later"));
-  assert.ok(expression.includes("Direction::East"));
-  assert.ok(expression.includes("Options::Mode"));
+  assert.ok(expression.includes("Direction.East"));
+  assert.ok(expression.includes("Options.Mode"));
   assert.ok(!completionsAt(source, "  if true").includes("Count"));
   assert.ok(!completionsAt(source, "  if true").includes("Version"));
 });
@@ -195,6 +199,9 @@ test("properties offer casts and pattern operators in expressions", () => {
     assert.ok(completionsAt(expression, "  if Name is ").includes(keyword));
   }
   assert.ok(!completionsAt("Test 0x01000000\n0x001\n  if ", "  if ").includes("not"));
+  const negate = completionItemsAt("Test 0x01000000\n0x001\n  bool IsEnabled\n  if ", "  if ");
+  assert.equal(negate.find((item) => item.label === "!").kind, 10);
+  assert.ok(completionsAt("Test 0x01000000\n0x001\n  bool IsEnabled\n  if !", "  if !").includes("IsEnabled"));
   assert.ok(SNIPPETS.some((snippet) => snippet.label === "constructor" && snippet.scope === "root"));
   assert.ok(SNIPPETS.some((snippet) => snippet.label === "property" && snippet.scope === "root"));
 });
@@ -212,6 +219,12 @@ test("grammar highlights properties, accessors, constructors, and pattern operat
     assert.match(word, new RegExp(words.match));
   }
   assert.doesNotMatch("ordinary", new RegExp(words.match));
+  const operators = grammar.repository.expression.patterns.find((pattern) => pattern.name === "keyword.operator.chunkl");
+  assert.match("!IsEnabled", new RegExp(operators.match));
+  const member = grammar.repository.expression.patterns.find((pattern) => pattern.captures?.[2]?.name === "punctuation.accessor.member.chunkl");
+  assert.match("Direction.North", new RegExp(member.match));
+  assert.match("Header.Count", new RegExp(member.match));
+  assert.doesNotMatch("Direction::North", new RegExp(member.match));
   assert.equal(grammar.injections["L:meta.setter.chunkl - comment - string"].patterns[0].name, "variable.parameter.setter.chunkl");
 });
 
