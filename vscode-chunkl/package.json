@@ -2,7 +2,7 @@
   "name": "vscode-chunkl",
   "displayName": "ChunkL",
   "description": "Language support for ChunkL (.chunkl) files",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "BigBang1112",
   "license": "MIT",
   "repository": {
