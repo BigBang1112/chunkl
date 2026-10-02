@@ -52,9 +52,11 @@ The library provides syntax and initialization metadata. Consumers apply type de
 ## Build and test
 
 ```sh
-cargo build
-cargo test
+cargo build --locked
+cargo test --locked
 ```
+
+After changing the crate version or dependencies in `Cargo.toml`, update and commit `Cargo.lock` with the manifest. For a version-only change, run `cargo generate-lockfile --offline`, then `cargo test --locked`. CI and publishing use `--locked` to catch a missing or stale lockfile.
 
 ## License
 
