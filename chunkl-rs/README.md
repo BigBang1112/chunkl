@@ -56,7 +56,7 @@ cargo build --locked
 cargo test --locked
 ```
 
-After changing the crate version or dependencies in `Cargo.toml`, update and commit `Cargo.lock` with the manifest. For a version-only change, run `cargo generate-lockfile --offline`, then `cargo test --locked`. CI and publishing use `--locked` to catch a missing or stale lockfile.
+After changing the crate version or dependencies in `Cargo.toml`, update and commit `Cargo.lock` with the manifest. For a version-only change, run `cargo update --workspace --offline`, then `cargo test --locked`. CI and publishing use `--locked` to catch a missing or stale lockfile.
 
 ## License
 
