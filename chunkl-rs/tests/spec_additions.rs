@@ -160,6 +160,15 @@ fn patterns_and_boolean_keywords_retain_full_meaning() {
             "Name is null or empty and not null",
             "Name is null or empty and not null",
         ),
+        (
+            "ItemType == EItemType.Ornament",
+            "ItemType == EItemType.Ornament",
+        ),
+        (
+            "ItemType is EItemType.Ornament",
+            "ItemType is EItemType.Ornament",
+        ),
+        ("Header.Size.Count > 0", "Header.Size.Count > 0"),
     ] {
         let file = parse(&format!(
             "Test 0x01000000\n0x001\n  if {expression}\n    int Data\n"
@@ -215,7 +224,9 @@ fn malformed_new_syntax_reports_diagnostics() {
         "0x001\n  if true nonsense\n    int Data\n",
         "property 42 Flag\n  get = true\n",
         "property string Name\n  get = \"unterminated\n",
-        "0x001\n  if Kind is Direction::\n    int Data\n",
+        "0x001\n  if Kind is Direction.\n    int Data\n",
+        "0x001\n  if Kind is Direction::North\n    int Data\n",
+        "0x001\n  int[Header::Count] Data\n",
     ] {
         let result = parse_source(&format!("Test 0x01000000\n{declarations}"));
         assert!(!result.success(), "Accepted invalid source: {declarations}");

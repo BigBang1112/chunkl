@@ -117,7 +117,7 @@ internal sealed class ExpressionParser
         if (token.Kind == TokenKind.OpenParen || (token.Kind == TokenKind.Identifier && token.Text == "not"))
             return offset < _tokens.Count - _pos && CanStartPattern(offset + 1);
         return token.Kind == TokenKind.Identifier &&
-            (token.Text is "true" or "false" or "null" or "empty" || Peek(offset + 1).Kind == TokenKind.ColonColon);
+            (token.Text is "true" or "false" or "null" or "empty" || Peek(offset + 1).Kind == TokenKind.Dot);
     }
 
     private Pattern ParsePatternOr()
@@ -337,7 +337,7 @@ internal sealed class ExpressionParser
                     "false" => new LiteralExpression { Kind = LiteralKind.False, Value = "false" },
                     "null" => new LiteralExpression { Kind = LiteralKind.Null, Value = "null" },
                     "empty" => new LiteralExpression { Kind = LiteralKind.Empty, Value = "empty" },
-                    _ when Current.Kind == TokenKind.ColonColon => ParseScopedIdentifier(token.Text),
+                    _ when Current.Kind == TokenKind.Dot => ParseScopedIdentifier(token.Text),
                     _ => new IdentifierExpression { Name = token.Text }
                 };
             }
@@ -353,10 +353,18 @@ internal sealed class ExpressionParser
 
     private ScopedIdentifierExpression ParseScopedIdentifier(string qualifier)
     {
-        Advance(); // ::
+        Advance(); // .
         if (Current.Kind != TokenKind.Identifier)
-            _diagnostics?.ReportError("Expected an enum or flags member after '::'", Current.Position);
+            _diagnostics?.ReportError("Expected a member after '.'", Current.Position);
         var member = Current.Kind == TokenKind.Identifier ? Advance().Text : "";
+        while (Current.Kind == TokenKind.Dot)
+        {
+            qualifier += "." + member;
+            Advance();
+            if (Current.Kind != TokenKind.Identifier)
+                _diagnostics?.ReportError("Expected a member after '.'", Current.Position);
+            member = Current.Kind == TokenKind.Identifier ? Advance().Text : "";
+        }
         return new ScopedIdentifierExpression { Qualifier = qualifier, Name = member };
     }
 

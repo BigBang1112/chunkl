@@ -17,16 +17,16 @@ export function getCompletionContext(textBeforeCursor: string): CompletionContex
     return { kind: scope };
   }
 
-  const member = /\b([A-Za-z_]\w*)::(?:[A-Za-z_]\w*)?$/.exec(textBeforeCursor);
-  if (member) {
-    return { kind: "enum-member", typeName: member[1] };
-  }
   if (/^\s+[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*<[\w.]*$/.test(textBeforeCursor)) {
     return { kind: "cast" };
   }
   if (isInsideArrayCount(textBeforeCursor)
     || /^\s*(?:if|else\s+if|while|loop|switch|case|skip|assert)\s+/.test(textBeforeCursor)
     || /^\s+.*(?<![=!<>])=(?!=)/.test(textBeforeCursor)) {
+    const member = /\b([A-Za-z_]\w*)\.(?:[A-Za-z_]\w*)?$/.exec(textBeforeCursor);
+    if (member) {
+      return { kind: "enum-member", typeName: member[1] };
+    }
     return { kind: "expression" };
   }
   return { kind: "field" };

@@ -66,6 +66,7 @@ fn parses_expression_array_counts_and_while() {
 0x001
   int Width
   int Height
+  int[Header.Count] FromHeader
   int[Width * Height] Pixels
   short[(Width + 1) * 2] Samples
   byte HasNext
@@ -77,7 +78,14 @@ fn parses_expression_array_counts_and_while() {
     assert!(result.success(), "{:?}", result.diagnostics);
     let file = result.file.unwrap();
     let body = &file.chunks[0].body;
-    let BodyStatement::Field(pixels) = &body[2] else {
+    let BodyStatement::Field(from_header) = &body[2] else {
+        panic!()
+    };
+    assert_eq!(
+        from_header.ty.fixed_array_count.as_deref(),
+        Some("Header.Count")
+    );
+    let BodyStatement::Field(pixels) = &body[3] else {
         panic!()
     };
     assert_eq!(
@@ -85,14 +93,14 @@ fn parses_expression_array_counts_and_while() {
         Some("Width * Height")
     );
     assert_eq!(pixels.name.as_deref(), Some("Pixels"));
-    let BodyStatement::Field(samples) = &body[3] else {
+    let BodyStatement::Field(samples) = &body[4] else {
         panic!()
     };
     assert_eq!(
         samples.ty.fixed_array_count.as_deref(),
         Some("(Width + 1) * 2")
     );
-    let BodyStatement::While(statement) = &body[5] else {
+    let BodyStatement::While(statement) = &body[6] else {
         panic!()
     };
     assert_eq!(statement.body.len(), 2);
@@ -102,6 +110,7 @@ fn parses_expression_array_counts_and_while() {
     );
 
     let generated = write(&file);
+    assert!(generated.contains("int[Header.Count] FromHeader"));
     assert!(generated.contains("int[Width * Height] Pixels"));
     assert!(generated.contains("while HasNext != 0 // sentinel"));
     let reparsed = parse_source(&generated);

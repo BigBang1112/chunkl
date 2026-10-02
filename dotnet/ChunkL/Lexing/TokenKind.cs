@@ -10,7 +10,6 @@ public enum TokenKind
     DotDot,
     Comma,
     Colon,
-    ColonColon,
     Equals,
     EqualsEquals,
     BangEquals,

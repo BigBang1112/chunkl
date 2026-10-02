@@ -61,6 +61,9 @@ public class SpecAdditionsTests
     [InlineData("!(IsEnabled and HasData)", "!(IsEnabled && HasData)")]
     [InlineData("!(Name is null)", "!(Name is null)")]
     [InlineData("Name is null or empty and not null", "Name is null or empty and not null")]
+    [InlineData("ItemType == EItemType.Ornament", "ItemType == EItemType.Ornament")]
+    [InlineData("ItemType is EItemType.Ornament", "ItemType is EItemType.Ornament")]
+    [InlineData("Header.Size.Count > 0", "Header.Size.Count > 0")]
     public void ExpressionsRetainTheirFullMeaning(string expression, string expected)
     {
         var file = Parse($"Test 0x01000000\n0x001\n  if {expression}\n    int Data\n");
@@ -109,7 +112,9 @@ public class SpecAdditionsTests
     [InlineData("0x001\n  if true nonsense\n    int Data\n")]
     [InlineData("property 42 Flag\n  get = true\n")]
     [InlineData("property string Name\n  get = \"unterminated\n")]
-    [InlineData("0x001\n  if Kind is Direction::\n    int Data\n")]
+    [InlineData("0x001\n  if Kind is Direction.\n    int Data\n")]
+    [InlineData("0x001\n  if Kind is Direction::North\n    int Data\n")]
+    [InlineData("0x001\n  int[Header::Count] Data\n")]
     public void InvalidNewSyntaxReportsDiagnostics(string declarations)
     {
         var result = ChunkLParser.ParseSource("Test 0x01000000\n" + declarations);

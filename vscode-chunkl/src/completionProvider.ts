@@ -45,7 +45,7 @@ export class ChunkLCompletionProvider implements vscode.CompletionItemProvider {
         ...collectLocalEnums(source).flatMap((type) => [
           completionItem(type.name, vscode.CompletionItemKind.Enum, `Local ${type.kind}`),
           ...type.members.map((member) =>
-            completionItem(`${type.name}::${member}`, vscode.CompletionItemKind.EnumMember, `${type.kind} member`)
+            completionItem(`${type.name}.${member}`, vscode.CompletionItemKind.EnumMember, `${type.kind} member`)
           ),
         ]),
         ...["true", "false", "null", "empty"].map((value) =>

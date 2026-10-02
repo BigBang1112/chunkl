@@ -286,9 +286,9 @@ public class ParserIntegrationTests
             TestClass 0x01000000
 
             0x001
-              if ItemType != EItemType::Ornament
+              if ItemType != EItemType.Ornament
                 int SlotCost
-              else if ItemType == EItemType::Character
+              else if ItemType == EItemType.Character
                 bool IsPlayable
               else
                 int UnknownData
@@ -298,10 +298,10 @@ public class ParserIntegrationTests
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
 
         var ifStmt = Assert.IsType<IfStatement>(result.File!.Chunks[0].Body[0]);
-        Assert.Contains("ItemType != EItemType::Ornament", W(ifStmt.Condition));
+        Assert.Contains("ItemType != EItemType.Ornament", W(ifStmt.Condition));
         Assert.Single(ifStmt.Body);
         Assert.Single(ifStmt.ElseIfs);
-        Assert.Contains("ItemType == EItemType::Character", W(ifStmt.ElseIfs[0].Condition));
+        Assert.Contains("ItemType == EItemType.Character", W(ifStmt.ElseIfs[0].Condition));
         Assert.NotNull(ifStmt.Else);
         Assert.Single(ifStmt.Else!.Body);
     }
@@ -524,6 +524,7 @@ public class ParserIntegrationTests
             0x001
               int Width
               int Height
+              int[Header.Count] FromHeader
               int[Width * Height] Pixels
               short[(Width + 1) * 2] Samples
               byte HasNext
@@ -536,16 +537,18 @@ public class ParserIntegrationTests
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.Select(d => d.ToString())));
 
         var body = result.File!.Chunks[0].Body;
-        Assert.Equal("Width * Height", Assert.IsType<FieldDeclaration>(body[2]).Type.FixedArrayCount);
-        Assert.Equal("(Width + 1) * 2", Assert.IsType<FieldDeclaration>(body[3]).Type.FixedArrayCount);
+        Assert.Equal("Header.Count", Assert.IsType<FieldDeclaration>(body[2]).Type.FixedArrayCount);
+        Assert.Equal("Width * Height", Assert.IsType<FieldDeclaration>(body[3]).Type.FixedArrayCount);
+        Assert.Equal("(Width + 1) * 2", Assert.IsType<FieldDeclaration>(body[4]).Type.FixedArrayCount);
 
-        var loop = Assert.IsType<WhileStatement>(body[5]);
+        var loop = Assert.IsType<WhileStatement>(body[6]);
         Assert.Equal("HasNext != 0", W(loop.Condition));
         Assert.Equal("sentinel", loop.TrailingComment?.Text);
         Assert.Equal(2, loop.Body.Count);
         Assert.Equal("HasNext", Assert.IsType<FieldDeclaration>(loop.Body[1]).Name);
 
         var written = ChunkLParser.Write(result.File);
+        Assert.Contains("int[Header.Count] FromHeader", written);
         Assert.Contains("int[Width * Height] Pixels", written);
         Assert.Contains("while HasNext != 0 // sentinel", written);
         var reparsed = ChunkLParser.ParseSource(written);
