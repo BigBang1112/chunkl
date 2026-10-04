@@ -99,6 +99,26 @@ test("recognizes expression and type completion positions", () => {
   assert.deepEqual(getCompletionContext("  int Value // ("), { kind: "none" });
 });
 
+test("nested type references preserve completion contexts and symbol types", () => {
+  const { collectVisibleFields } = require("../out/documentSymbols");
+  const source = readFileSync(path.join(__dirname, "../../dotnet/ChunkL.Tests/Fixtures/nested_types.chunkl"), "utf8");
+  const lines = source.split(/\r?\n/);
+  const fields = collectVisibleFields(source, lines.indexOf("  get = Spawn"));
+  assert.equal(fields.find((field) => field.name === "Spawn").type, "CGameCtnMacroBlockInfo.BlockSpawn");
+  assert.equal(fields.find((field) => field.name === "OptionalSpawns").type, "CGameCtnMacroBlockInfo.BlockSpawn?[]");
+  assert.equal(fields.find((field) => field.name === "CastItems").type, "Outer.Inner.Leaf<Other.Inner.Target>*?[]");
+  assert.equal(fields.find((field) => field.name === "CurrentSpawns").type, "CGameCtnMacroBlockInfo.BlockSpawn?[]");
+  const setterLine = lines.indexOf("    Spawn = value");
+  assert.equal(collectVisibleFields(source, setterLine).find((field) => field.name === "value").type,
+    "CGameCtnMacroBlockInfo.BlockSpawn");
+  assert.deepEqual(getCompletionContext("  CGameCtnMacroBlockInfo.BlockSpawn"), { kind: "field" });
+  assert.deepEqual(getCompletionContext("  Outer.Inner.Leaf<Other.Inner."), { kind: "cast" });
+  assert.deepEqual(getCompletionContext("property Outer.Inner.Leaf<Other.Inner."), { kind: "cast" });
+  assert.deepEqual(getCompletionContext("  CGameCtnMacroBlockInfo.BlockSpawn[Count * "), { kind: "expression" });
+  assert.deepEqual(getCompletionContext("  CGameCtnMacroBlockInfo.BlockSpawn Spawn ("), { kind: "attribute" });
+  assert.deepEqual(getCompletionContext("  CGameCtnMacroBlockInfo.BlockSpawn Spawn = "), { kind: "expression" });
+});
+
 test("provider suggests local enums and fields without class or other type names", () => {
   const source = [
     "Test 0x01000000", "0x001", "  int OldField", "0x002", "  int Width",
