@@ -77,3 +77,53 @@ test("an unfinished quoted attribute does not color the following line as a stri
   assert.ok(scopesAt(next, line, "0x002").includes("constant.numeric.hex.chunk-id.chunkl"));
   assert.ok(scopesAt(next, line, "enabled").includes("entity.other.attribute-name.flag.chunkl"));
 });
+
+test("nested field types keep their complete path and modifier scopes", () => {
+  for (const [type, scope] of [
+    ["CGameCtnMacroBlockInfo.BlockSpawn", "support.class.chunkl"],
+    ["Outer._Inner.Leaf2", "support.class.chunkl"],
+    ["outer.Inner.Leaf", "storage.type.primitive.chunkl"],
+  ]) {
+    for (const suffix of ["", "?[]", "[Count]"]) {
+      const line = "  " + type + suffix + " Spawns (external) // nested";
+      const result = grammar.tokenizeLine(line);
+      for (const segment of type.split(".")) {
+        assert.ok(scopesAt(result, line, segment).includes(scope), segment);
+      }
+      assert.ok(scopesAt(result, line, "Spawns").includes("variable.other.field.chunkl"));
+      assert.ok(scopesAt(result, line, "external").includes("entity.other.attribute-name.flag.chunkl"));
+      assert.ok(scopesAt(result, line, "// nested").includes("comment.line.double-slash.chunkl"));
+      if (suffix.includes("?")) {
+        assert.ok(scopesAt(result, line, "?").includes("storage.modifier.nullable.chunkl"));
+      }
+      if (suffix.includes("[")) {
+        assert.ok(scopesAt(result, line, "[").includes("punctuation.definition.array.begin.chunkl"));
+      }
+    }
+  }
+  const line = "  Outer.Inner.Leaf*?[][] NestedItems";
+  const result = grammar.tokenizeLine(line);
+  assert.ok(scopesAt(result, line, "Leaf").includes("support.class.chunkl"));
+  assert.ok(scopesAt(result, line, "*").includes("storage.modifier.chunk-preference.chunkl"));
+  assert.ok(scopesAt(result, line, "?").includes("storage.modifier.nullable.chunkl"));
+  assert.ok(scopesAt(result, line, "NestedItems").includes("variable.other.field.chunkl"));
+  const anonymous = "  CGameCtnMacroBlockInfo.BlockSpawn // anonymous";
+  assert.ok(scopesAt(grammar.tokenizeLine(anonymous), anonymous, "BlockSpawn").includes("support.class.chunkl"));
+});
+
+test("nested types support casts and property highlighting", () => {
+  for (const [type, scope] of [
+    ["Outer.Inner.Leaf", "support.class.chunkl"],
+    ["outer.Inner.Leaf", "storage.type.primitive.chunkl"],
+  ]) {
+    const line = "  " + type + "<Other.Inner.Target>?[] Items";
+    const result = grammar.tokenizeLine(line);
+    assert.ok(scopesAt(result, line, "Leaf").includes(scope));
+    assert.ok(scopesAt(result, line, "Target").includes("entity.name.type.cast.chunkl"));
+    assert.ok(scopesAt(result, line, "Items").includes("variable.other.field.chunkl"));
+  }
+  const line = "property CGameCtnMacroBlockInfo.BlockSpawn?[] CurrentSpawns";
+  const result = grammar.tokenizeLine(line);
+  assert.ok(scopesAt(result, line, "BlockSpawn").includes("storage.type.property.chunkl"));
+  assert.ok(scopesAt(result, line, "CurrentSpawns").includes("variable.other.property.chunkl"));
+});

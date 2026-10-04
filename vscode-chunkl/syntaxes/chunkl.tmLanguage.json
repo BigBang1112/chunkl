@@ -88,7 +88,7 @@
     },
     "property-declaration": {
       "name": "meta.property.chunkl",
-      "begin": "^(property)\\s+([A-Za-z_][\\w.]*(?:<[^>]+>)?\\*?\\??(?:\\[[^\\]]*\\])*)\\s+([A-Za-z_]\\w*)",
+      "begin": "^(property)\\s+([A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*(?:<[^>]+>)?\\*?\\??(?:\\[[^\\]]*\\])*)\\s+([A-Za-z_]\\w*)",
       "end": "(?=^\\S)",
       "beginCaptures": {
         "1": { "name": "keyword.declaration.property.chunkl" },
@@ -306,7 +306,7 @@
       ]
     },
     "field-primitive-with-cast": {
-      "begin": "(?<=\\s)([a-z_]\\w*)(<)",
+      "begin": "(?<=\\s)([a-z_]\\w*(?:\\.[A-Za-z_]\\w*)*)(<)",
       "end": "(?=\\s*(?://|#|$))",
       "beginCaptures": {
         "1": { "name": "storage.type.primitive.chunkl" },
@@ -343,7 +343,7 @@
       ]
     },
     "field-class-with-cast": {
-      "begin": "(?<=\\s)([A-Z][A-Za-z0-9_]*)(<)",
+      "begin": "(?<=\\s)([A-Z][A-Za-z0-9_]*(?:\\.[A-Za-z_]\\w*)*)(<)",
       "end": "(?=\\s*(?://|#|$))",
       "beginCaptures": {
         "1": { "name": "support.class.chunkl" },
@@ -381,7 +381,7 @@
       ]
     },
     "field-primitive": {
-      "match": "(?<=\\s)([a-z_]\\w*)([?])?((?:\\[[^\\]\\r\\n]*\\])*)(?:\\s+([A-Za-z_]\\w*))?(?:\\s*(=)\\s*(.+?))?(?=\\s*(?://|#|\\(|$))",
+      "match": "(?<=\\s)([a-z_]\\w*(?:\\.[A-Za-z_]\\w*)*)([?])?((?:\\[[^\\]\\r\\n]*\\])*)(?:\\s+([A-Za-z_]\\w*))?(?:\\s*(=)\\s*(.+?))?(?=\\s*(?://|#|\\(|$))",
       "captures": {
         "1": { "name": "storage.type.primitive.chunkl" },
         "2": { "name": "storage.modifier.nullable.chunkl" },
@@ -396,7 +396,7 @@
       }
     },
     "field-class": {
-      "match": "(?<=\\s)([A-Z][A-Za-z0-9_]*)([*])?([?])?((?:\\[[^\\]\\r\\n]*\\])*)(?:\\s+([A-Za-z_]\\w*))?(?:\\s*(=)\\s*(.+?))?(?=\\s*(?://|#|\\(|$))",
+      "match": "(?<=\\s)([A-Z][A-Za-z0-9_]*(?:\\.[A-Za-z_]\\w*)*)([*])?([?])?((?:\\[[^\\]\\r\\n]*\\])*)(?:\\s+([A-Za-z_]\\w*))?(?:\\s*(=)\\s*(.+?))?(?=\\s*(?://|#|\\(|$))",
       "captures": {
         "1": { "name": "support.class.chunkl" },
         "2": { "name": "storage.modifier.chunk-preference.chunkl" },
@@ -438,7 +438,7 @@
       }
     },
     "enum-member": {
-      "match": "^(\\s+)(\\w+)(?:\\s*(=)\\s*(\\d+))?",
+      "match": "^(\\s+)(\\w+)(?:\\s*(=)\\s*(\\d+))?(?=\\s*(?://|#|$))",
       "captures": {
         "2": { "name": "variable.other.enummember.chunkl" },
         "3": { "name": "keyword.operator.assignment.chunkl" },

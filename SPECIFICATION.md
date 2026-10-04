@@ -223,6 +223,25 @@ Field declarations appear inside a chunk body or archive body, indented by one a
 - **Anonymous fields** have no name. Their value is read but not exposed.
 - An optional **(attribute list)** may follow the field name. It contains comma-separated flags (`name`) and key-value pairs (`name: value`). Both the name and value can contain spaces.
 
+### Nested Type References
+
+A type name may be a dot-separated path to reference a nested type in another class. Any number of segments is allowed. Each segment is an identifier: a letter or underscore followed by letters, digits, or underscores. Empty segments and whitespace around the dots are invalid.
+
+Use the full path wherever a field or property type is expected. Cast targets also support these paths. The existing cast, chunk-preference, nullable, and array modifiers follow the complete type name in their usual order:
+
+```
+CGameCtnMacroBlockInfo.BlockSpawn Spawn
+CGameCtnMacroBlockInfo.BlockSpawn?[] OptionalSpawns
+CGameCtnMacroBlockInfo.BlockSpawn[Count] Spawns
+Outer.Inner.Leaf*?[][] NestedItems
+byte<Outer.Inner.Direction> Direction
+
+property CGameCtnMacroBlockInfo.BlockSpawn CurrentSpawn
+  get = Spawn
+```
+
+The complete dotted name identifies the type; it does not declare the enclosing or nested types. Dots in expressions continue to mean member access.
+
 ### Repeated Named Fields
 
 Named fields in chunks and the self archive belong to the class. Repeating a name in these bodies refers to one stored member, including declarations inside version blocks, branches, and loops. Each declaration still reads or writes a value at its own position in the binary layout. Reading it replaces the member's current value; writing it uses that value.

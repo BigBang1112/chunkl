@@ -1,0 +1,23 @@
+TestClass 0x01000000
+
+0x001
+  int Count
+  CGameCtnMacroBlockInfo.BlockSpawn Spawn = empty // Nested archive reference.
+  CGameCtnMacroBlockInfo.BlockSpawn?[] OptionalSpawns (external)
+  CGameCtnMacroBlockInfo.BlockSpawn[Count] Spawns
+  Outer.Inner.Leaf*?[][] NestedItems
+  Outer.Inner.Leaf<Other.Inner.Target>*?[] CastItems
+  byte<Outer.Inner.Direction> Direction
+  CGameCtnMacroBlockInfo.BlockSpawn // Anonymous nested type.
+
+archive Holder
+  CGameCtnMacroBlockInfo.BlockSpawn Spawn
+  Outer._Inner.Leaf2 Leaf
+
+property CGameCtnMacroBlockInfo.BlockSpawn CurrentSpawn
+  get = Spawn
+  set
+    Spawn = value
+
+property CGameCtnMacroBlockInfo.BlockSpawn?[] CurrentSpawns
+  get = OptionalSpawns

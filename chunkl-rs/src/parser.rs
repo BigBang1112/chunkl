@@ -708,6 +708,9 @@ impl<'a> Parser<'a> {
 
     fn validated_type(&mut self, text: &str, line: usize) -> TypeReference {
         let ty = parse_type(text);
+        if !ty.name.split('.').all(is_identifier) {
+            self.error(line, "Expected a type name with dot-separated identifiers");
+        }
         for count in ty.array_counts.iter().flatten() {
             self.expression(count, line);
         }

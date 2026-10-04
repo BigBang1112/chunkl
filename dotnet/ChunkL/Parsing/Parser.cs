@@ -1113,9 +1113,24 @@ public sealed class Parser
     {
         if (Current.Kind != TokenKind.Identifier)
             _diagnostics.ReportError("Expected a type name", Current.Position);
-        // Read the type name - could be a dotted name for cross-file references
+        // Preserve the complete path for nested types and cross-file references.
         var nameToken = Advance();
         var name = nameToken.Text;
+        var nameEnd = nameToken.SourceOffset + nameToken.Text.Length;
+        while (Current.Kind == TokenKind.Dot)
+        {
+            var dot = Advance();
+            if (dot.SourceOffset != nameEnd)
+                _diagnostics.ReportError("Expected '.' immediately after the type name", dot.Position);
+            if (Current.Kind != TokenKind.Identifier || Current.SourceOffset != dot.SourceOffset + 1)
+            {
+                _diagnostics.ReportError("Expected a type name immediately after '.'", Current.Position);
+                break;
+            }
+            var segment = Advance();
+            name += "." + segment.Text;
+            nameEnd = segment.SourceOffset + segment.Text.Length;
+        }
 
         CastType? castTarget = null;
         var chunkPreference = false;

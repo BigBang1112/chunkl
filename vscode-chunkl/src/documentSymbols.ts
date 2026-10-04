@@ -22,7 +22,7 @@ export interface BodyContext {
   inSetter?: boolean;
 }
 
-const MEMBER_DECLARATION = /^\s*([A-Za-z_][\w.]*(?:<[^>]+>)?\*?\??(?:\[[^\]]*\])*)\s+([A-Za-z_]\w*)\b/;
+const MEMBER_DECLARATION = /^\s*([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:<[^>]+>)?\*?\??(?:\[[^\]]*\])*)\s+([A-Za-z_]\w*)\b/;
 
 const BODY_KEYWORDS = new Set(CONTROL_KEYWORDS);
 
