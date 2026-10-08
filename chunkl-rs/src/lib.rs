@@ -4,8 +4,8 @@ pub mod ast;
 pub mod diagnostic;
 pub mod expression;
 pub mod lexer;
-pub mod semantics;
 mod parser;
+pub mod semantics;
 mod writer;
 
 pub use ast::*;
@@ -13,8 +13,11 @@ pub use diagnostic::{Diagnostic, DiagnosticSeverity, SourcePosition, SourceRange
 pub use expression::{parse_expression, parse_expression_checked};
 pub use lexer::{Lexer, Token, TokenKind};
 pub use parser::{parse_file, parse_reader, parse_source};
-pub use semantics::{analyze, ArchiveScope, FieldScope, SemanticModel, StoredField};
-pub use writer::{write, write_expression, write_with_options, WriterOptions};
+pub use semantics::{
+    ArchiveScope, FieldScope, GameDefaultDefinition, SemanticModel, StoredField, analyze,
+    analyze_for_game,
+};
+pub use writer::{WriterOptions, write, write_expression, write_with_options};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseResult {

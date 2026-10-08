@@ -12,6 +12,7 @@ ChunkL describes the binary layout of classes through chunks, archives, and vers
 - **Enum and flags completions** for type names and dotted values such as `Direction.North`. Typing `Direction.` in an expression suggests its members.
 - **Snippets** for chunks, archives, enums, flags, constructors, properties, loops, conditionals, and version blocks, with editable placeholders.
 - **Editing support** for line comments, automatic bracket and quote closing, and indentation.
+- **Game-specific defaults** such as `int Count = 0 [TMSX = 5, TM2020 = 8]`, with highlighting, a snippet, game label suggestions from the current file, and expression completions inside each entry.
 - **Syntax diagnostics** for common errors such as invalid headers, indentation, missing expressions, unterminated strings, unmatched brackets, and incorrect member access.
 
 Requires VS Code **1.85 or later**.

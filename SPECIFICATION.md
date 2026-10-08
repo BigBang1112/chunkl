@@ -217,11 +217,14 @@ Field declarations appear inside a chunk body or archive body, indented by one a
   type FieldName = default_value // comment
   type // anonymous field (no name)
   type FieldName (flag, key: value, ...)
+  type FieldName [TMSX = 5]
+  type FieldName = default_value (flag) [TMSX = 5, TM2020 = 8] // comment
 ```
 
 - **Named fields** have a name following the type.
 - **Anonymous fields** have no name. Their value is read but not exposed.
 - An optional **(attribute list)** may follow the field name. It contains comma-separated flags (`name`) and key-value pairs (`name: value`). Both the name and value can contain spaces.
+- An optional **game default list** may appear at the end of any field declaration. When flag or key-value attributes are present, the game default list must follow the entire parenthesized attribute list. See [Game-Specific Defaults](#game-specific-defaults).
 
 ### Nested Type References
 
@@ -250,7 +253,7 @@ Each named archive has its own field scope. Its fields do not share storage with
 
 Repeated declarations must agree on the type, cast target, nullability, chunk preference, and array shape. Uncast scalar integer fields may use different wire types: the stored member uses the widest declared integer type that can represent the full range of every declaration. If none of the declared types can do so, the declarations are invalid. For example, `short Flags` and `int Flags` share an `int` member. Each occurrence keeps its declared wire type, and writing a value outside that type's range is an error.
 
-A shared member has one inline default. Multiple declarations may repeat that default only when their expressions have identical syntax, ignoring whitespace outside string literals. Different defaults are invalid. The default is evaluated once, at the position of the first declaration that supplies it, according to the [initialization rules](#initialization-order). Version conditions and other control flow govern serialization, not which default applies. A constructor assignment to that member skips its inline default across all declarations.
+A shared member has one fallback inline default and at most one default per game label. Declarations may supply defaults for different games independently. Multiple declarations may repeat a fallback or a default for the same game only when their expressions have identical syntax, ignoring whitespace outside string literals. Conflicting defaults for the same context are invalid. The selected default is evaluated once, at the position of the first declaration that supplies it, according to the [initialization rules](#initialization-order). Version conditions and other control flow govern serialization, not which default applies. A constructor assignment to that member skips all its inline defaults across all declarations.
 
 ### Special Keywords as Field Types
 
@@ -924,12 +927,35 @@ string Name = empty
 CPlugMaterialUserInst MaterialUserInst = empty
 ```
 
+### Game-Specific Defaults
+
+Add a square-bracket list at the end of a field declaration to specify defaults for individual game contexts:
+
+The order is `type [FieldName] [= fallback] [(attributes)] [game defaults] [comment]`, where each bracketed part in this description is optional. Game defaults always follow flag and key-value attributes when attributes are present. For example, `int Count (optional) [TMSX = 5]` is valid; `int Count [TMSX = 5] (optional)` is invalid. Attributes remain optional.
+
+```
+int Count [TMSX = 5]
+int Limit = 0 [TMSX = 5, TM2020 = 8]
+string Name (deprecated) [TMSX = "Legacy, [name]", TM2020 = "Current"] // comment
+vec3 Position [TMSX = (1, 2, 3)]
+int[] Values = empty [TMSX = empty]
+version = 1 [TMSX = 5]
+```
+
+The list contains one or more comma-separated `GameLabel = expression` entries, with no trailing comma. Each label is a non-empty sequence of ASCII letters, digits, or underscores. Labels are case-sensitive and have no fixed vocabulary. Each label may occur only once in a declaration. The list must be closed on the same line; only a trailing comment may follow it. There is at most one list per declaration.
+
+Values use the full [expression syntax](#18-expressions), including tuples, strings, member access, `null`, and `empty`. Commas inside tuples or strings do not separate entries. A list is distinct from an array modifier, which is part of the type and contains an optional count expression rather than game assignments. Game defaults are allowed on named, anonymous, and special field declarations that accept an ordinary default. They are not allowed on properties, computed assignments, constructor assignments, or control flow statements.
+
+The consuming tool supplies the game context when initializing an instance or choosing an anonymous or special field's default. An exact label match selects that game's expression instead of the ordinary `= value` fallback. If there is no matching entry, or no game context is supplied, use the fallback; if there is no fallback, keep the type default. Evaluate only the selected expression. A chunk's game qualifiers do not select a default implicitly, and `.vN` chunk version annotations and numeric `vN` serialization conditions do not participate in game matching. These defaults do not change which fields are serialized or replace values read from a stream.
+
+A constructor assignment skips both the fallback and all game-specific defaults for its target member. Named archives select their own defaults using the game context supplied by the consuming tool. For repeated fields, select across all declarations in the same field scope and use the first occurrence of the selected fallback or game entry as its initialization position.
+
 ### Initialization Order
 
 When a class instance is created:
 
 1. Initialize all stored members to their type defaults: zero for numeric and enum values, `false` for booleans, `null` for nullable and reference types, and member-wise type defaults for non-nullable composite value types.
-2. Evaluate and apply inline defaults in file source order, skipping members directly targeted by constructor assignments. For a [repeated field](#repeated-named-fields), use the position of the first declaration that supplies its default and evaluate it only once. Defaults inside serialization conditions still apply at this stage.
+2. Select each member's game-specific default or fallback, then evaluate and apply the selected inline defaults in file source order, skipping members directly targeted by constructor assignments. For a [repeated field](#repeated-named-fields), use the position of the first declaration that supplies its selected default and evaluate it only once. Defaults inside serialization conditions still apply at this stage.
 3. Run constructor assignments in source order, including calls to property setters.
 
 An inline default reads the current values of any fields or properties it references. Forward references are allowed, but a later default or constructor assignment has not run yet. Reading a field does not evaluate its default on demand. Cyclic field dependencies do not cause recursive evaluation; each default runs once at its position.

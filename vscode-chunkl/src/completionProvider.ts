@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { getCompletionContext } from "./completionContext";
+import { collectGameLabels } from "./gameDefaults";
 import { collectLocalEnums, collectVisibleFields, getBodyContext } from "./documentSymbols";
 import {
   ATTRIBUTE_KEYWORDS,
@@ -22,6 +23,11 @@ export class ChunkLCompletionProvider implements vscode.CompletionItemProvider {
     }
     if (context.kind === "attribute") {
       return ATTRIBUTE_KEYWORDS.map(attributeCompletion);
+    }
+    if (context.kind === "game-label") {
+      return collectGameLabels(document.getText()).map((label) =>
+        completionItem(label, vscode.CompletionItemKind.Value, "Game default context")
+      );
     }
     if (context.kind === "enum-member") {
       const localEnum = collectLocalEnums(document.getText())

@@ -1086,6 +1086,12 @@ public sealed class Parser
             attrs = ParseAttributeList();
         }
 
+        var gameDefaults = Current.Kind == TokenKind.OpenBracket ? ParseGameDefaults() : new List<GameDefault>();
+        if (!IsStatementTerminator())
+        {
+            _diagnostics.ReportError("Unexpected tokens after field declaration", Current.Position);
+            while (!IsStatementTerminator()) Advance();
+        }
         var comment = TryParseTrailingComment();
         if (Current.Kind == TokenKind.Newline)
             Advance();
@@ -1096,11 +1102,70 @@ public sealed class Parser
             Name = name,
             DefaultValue = defaultValue,
             DefaultValueSource = defaultValueSource,
+            GameDefaults = gameDefaults,
             Attributes = attrs,
             TrailingComment = comment,
             IsSpecialKeyword = isSpecial,
             Position = MakeRange(startToken)
         };
+    }
+
+    private List<GameDefault> ParseGameDefaults()
+    {
+        Advance(); // [
+        var entries = new List<GameDefault>();
+        var labels = new HashSet<string>(StringComparer.Ordinal);
+        if (Current.Kind == TokenKind.CloseBracket)
+            _diagnostics.ReportError("Expected a game default entry", Current.Position);
+        while (!IsStatementTerminator() && Current.Kind != TokenKind.CloseBracket)
+        {
+            var start = Current;
+            var labelStart = Current.SourceOffset;
+            while (!IsStatementTerminator() && Current.Kind is not (TokenKind.Equals or TokenKind.Comma or TokenKind.CloseBracket))
+                Advance();
+            var game = _source.Substring(labelStart, Current.SourceOffset - labelStart).Trim();
+            if (game.Length == 0 || game.Any(c => !(c is >= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9' or '_')))
+                _diagnostics.ReportError("Expected an alphanumeric game label", start.Position);
+            if (!labels.Add(game))
+                _diagnostics.ReportError($"Duplicate game default '{game}'", start.Position);
+            if (Current.Kind != TokenKind.Equals)
+            {
+                _diagnostics.ReportError("Expected '=' after game label", Current.Position);
+                break;
+            }
+            Advance();
+            var valueStart = Current.SourceOffset;
+            Expression value;
+            if (IsStatementTerminator() || Current.Kind is TokenKind.Comma or TokenKind.CloseBracket)
+            {
+                _diagnostics.ReportError("Expected a game default expression", Current.Position);
+                value = new IdentifierExpression { Name = "" };
+            }
+            else value = ParseExpression();
+            entries.Add(new GameDefault
+            {
+                Game = game, Value = value,
+                ValueSource = _source.Substring(valueStart, Current.SourceOffset - valueStart).Trim(),
+                Position = MakeRange(start)
+            });
+            if (Current.Kind != TokenKind.Comma) break;
+            Advance();
+            if (Current.Kind == TokenKind.CloseBracket || IsStatementTerminator())
+                _diagnostics.ReportError("Expected a game default entry after ','", Current.Position);
+        }
+        if (Current.Kind == TokenKind.CloseBracket) Advance();
+        else _diagnostics.ReportError("Expected ']' after game defaults", Current.Position);
+        return entries;
+    }
+
+    private bool IsGameDefaultBracket()
+    {
+        for (var i = _pos + 1; i < _tokens.Count; i++)
+        {
+            if (_tokens[i].Kind == TokenKind.Equals) return true;
+            if (_tokens[i].Kind is TokenKind.CloseBracket or TokenKind.Newline or TokenKind.Comment or TokenKind.EndOfFile) break;
+        }
+        return false;
     }
 
     private bool IsStatementTerminator()
@@ -1183,7 +1248,7 @@ public sealed class Parser
         }
 
         // Check for array dimensions [] or [count]
-        while (Current.Kind == TokenKind.OpenBracket)
+        while (Current.Kind == TokenKind.OpenBracket && !IsGameDefaultBracket())
         {
             Advance(); // [
             if (Current.Kind == TokenKind.CloseBracket)

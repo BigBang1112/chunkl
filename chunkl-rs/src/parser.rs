@@ -358,7 +358,10 @@ impl<'a> Parser<'a> {
         let (text, trailing_comment) = split_comment(line.text);
         let (kind, version, version_end) = parse_version_marker(text).unwrap();
         let marker_len = text.split_whitespace().next().map_or(text.len(), str::len);
-        let (attributes, _) = take_leading_attributes(text[marker_len..].trim());
+        let (attributes, remainder) = take_leading_attributes(text[marker_len..].trim());
+        if !remainder.is_empty() {
+            self.error(line.number, "Unexpected tokens after version condition");
+        }
         BodyStatement::VersionCondition(VersionCondition {
             range: line_range(line),
             kind,
@@ -436,7 +439,10 @@ impl<'a> Parser<'a> {
     fn parse_block(&mut self, indent: usize) -> BlockStatement {
         let line = self.take();
         let (text, trailing_comment) = split_comment(line.text);
-        let (_, attributes) = take_trailing_attributes(text["block".len()..].trim());
+        let (remainder, attributes) = take_trailing_attributes(text["block".len()..].trim());
+        if !remainder.is_empty() {
+            self.error(line.number, "Unexpected tokens after block statement");
+        }
         BlockStatement {
             attributes,
             body: self.parse_body(indent + 2),
@@ -467,7 +473,13 @@ impl<'a> Parser<'a> {
                 });
             } else if case_line.text == "default" || case_line.text.starts_with("default ") {
                 let default_line = self.take();
-                let (_, comment) = split_comment(default_line.text);
+                let (text, comment) = split_comment(default_line.text);
+                if text != "default" {
+                    self.error(
+                        default_line.number,
+                        "Unexpected tokens after default clause",
+                    );
+                }
                 default = Some(SwitchDefault {
                     body: self.parse_body(indent + 4),
                     trailing_comment: comment,
@@ -487,7 +499,10 @@ impl<'a> Parser<'a> {
     fn parse_simple_statement(&mut self, keyword: &str) -> SimpleStatement {
         let line = self.take();
         let (text, trailing_comment) = split_comment(line.text);
-        let (_, attributes) = take_trailing_attributes(text[keyword.len()..].trim());
+        let (remainder, attributes) = take_trailing_attributes(text[keyword.len()..].trim());
+        if !remainder.is_empty() {
+            self.error(line.number, "Unexpected tokens after statement");
+        }
         SimpleStatement {
             attributes,
             trailing_comment,
@@ -526,6 +541,7 @@ impl<'a> Parser<'a> {
             }
         }
 
+        let (text, game_defaults) = self.take_game_defaults(text, line.number);
         let (without_attributes, attributes) = take_trailing_attributes(text);
         let (declaration, default_value) = split_assignment(without_attributes)
             .map(|(declaration, value)| {
@@ -550,10 +566,101 @@ impl<'a> Parser<'a> {
             default_value,
             default_value_source: split_assignment(without_attributes)
                 .map(|(_, value)| value.trim().to_owned()),
+            game_defaults,
             attributes,
             trailing_comment,
             is_special_keyword: is_special_keyword(type_text),
         })
+    }
+
+    fn take_game_defaults<'s>(
+        &mut self,
+        text: &'s str,
+        line: usize,
+    ) -> (&'s str, Vec<GameDefault>) {
+        let tokens = Lexer::new(text).tokenize();
+        let mut depth = 0;
+        let mut start = None;
+        for (i, token) in tokens.iter().enumerate() {
+            if token.kind == TokenKind::OpenBracket && depth == 0 {
+                let prefix = &text[..token.source_offset];
+                let (_, remainder) = split_type_and_remainder(prefix.trim());
+                let has_assignment = tokens[i + 1..]
+                    .iter()
+                    .take_while(|t| t.kind != TokenKind::CloseBracket)
+                    .any(|t| t.kind == TokenKind::Equals);
+                if has_assignment || !remainder.is_empty() {
+                    start = Some(i);
+                    break;
+                }
+            }
+            match token.kind {
+                TokenKind::OpenParen | TokenKind::OpenBracket => depth += 1,
+                TokenKind::CloseParen | TokenKind::CloseBracket => depth -= 1,
+                _ => {}
+            }
+        }
+        let Some(start) = start else {
+            return (text, Vec::new());
+        };
+        let open = tokens[start].source_offset;
+        let mut entries = Vec::new();
+        let mut entry_start = open + 1;
+        let mut depth = 0;
+        let mut closed = false;
+        for token in &tokens[start + 1..] {
+            match token.kind {
+                TokenKind::CloseBracket if depth == 0 => {
+                    self.game_default_entry(
+                        &text[entry_start..token.source_offset],
+                        line,
+                        &mut entries,
+                    );
+                    if !text[token.source_offset + 1..].trim().is_empty() {
+                        self.error(line, "Unexpected tokens after game defaults");
+                    }
+                    closed = true;
+                    break;
+                }
+                TokenKind::Comma if depth == 0 => {
+                    self.game_default_entry(
+                        &text[entry_start..token.source_offset],
+                        line,
+                        &mut entries,
+                    );
+                    entry_start = token.source_offset + 1;
+                }
+                TokenKind::OpenParen | TokenKind::OpenBracket => depth += 1,
+                TokenKind::CloseParen | TokenKind::CloseBracket => depth -= 1,
+                _ => {}
+            }
+        }
+        if !closed {
+            self.error(line, "Expected ']' after game defaults");
+        }
+        (text[..open].trim_end(), entries)
+    }
+
+    fn game_default_entry(&mut self, text: &str, line: usize, entries: &mut Vec<GameDefault>) {
+        let Some((game, value)) = split_assignment(text) else {
+            self.error(
+                line,
+                "Expected a game default entry: GameLabel = expression",
+            );
+            return;
+        };
+        let game = game.trim();
+        if game.is_empty() || !game.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'_') {
+            self.error(line, "Expected an alphanumeric game label");
+        }
+        if entries.iter().any(|e| e.game == game) {
+            self.error(line, format!("Duplicate game default '{game}'"));
+        }
+        entries.push(GameDefault {
+            game: game.to_owned(),
+            value: self.expression(value.trim(), line),
+            value_source: Some(value.trim().to_owned()),
+        });
     }
 
     fn parse_constructor(&mut self) -> ConstructorDeclaration {

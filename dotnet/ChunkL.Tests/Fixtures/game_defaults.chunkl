@@ -1,0 +1,28 @@
+GameDefaults 0x01000000
+
+constructor
+  Skipped = 99
+
+0x001 [TM2020.v2]
+  version = 1 (optional) [TMSX = 5]
+  int Shared = 1 (optional, name: Shared) [TMSX = 5, tmsx = 6]
+  int First = Shared + 1
+  int Only [TMSX = 7]
+  int Skipped = 0 [TMSX = 4]
+  string Label = "Fallback" (deprecated) [TMSX = "Legacy, [name] // #", TM2020 = "Current"] // comment
+  vec3 Position [TMSX = (1, 2, 3), TM2020 = (4, 5, 6)]
+  int Count = 4
+  int?[Count] Values = empty [TMSX = empty]
+  byte<Mode> Direction [TMSX = Mode.North]
+  int (optional) [TMSX = 3]
+
+0x002
+  short Shared [TM2020 = 8]
+  int Later = First + 1
+
+archive Named
+  int Shared = 2 [TMSX = 12]
+  string Label [TMSX = empty]
+
+enum Mode
+  North

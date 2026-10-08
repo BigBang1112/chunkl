@@ -1,3 +1,5 @@
+import { findGameDefaults } from "./gameDefaults";
+
 export interface ChunkLDiagnostic {
   line: number;
   start: number;
@@ -97,6 +99,13 @@ export function getDiagnostics(source: string): ChunkLDiagnostic[] {
     previousIndent = indent;
     previousCanNest = false;
 
+    const gameList = findGameDefaults(code);
+    if (gameList && (section === "constructor" || section === "property"
+      || /^(?:if|else|while|loop|switch|case|default|skip|assert|return|throw|block)\b/.test(text)
+      || /^(?!version(?:b)?\b)[A-Za-z_]\w*\s*=/.test(text))) {
+      report("Game defaults are only allowed on field declarations", gameList.start, gameList.end);
+    }
+
     if (section === "enum") {
       if (indent !== 2) { report("Enum members use two spaces of indentation", 0, indent); }
       if (text !== "..." && !/^[A-Za-z_]\w*(?:\s*=\s*.+)?$/.test(text)) {
@@ -126,6 +135,21 @@ export function getDiagnostics(source: string): ChunkLDiagnostic[] {
         report("Expected 'get = expression' or 'set'");
       }
       continue;
+    }
+
+    if (gameList) {
+      const labels = new Set<string>();
+      for (const entry of gameList.entries) {
+        const match = /^\s*([A-Za-z0-9_]+)\s*=(?!=)\s*(.*?)\s*$/.exec(entry);
+        if (!match || !match[2]) {
+          report("Expected a game default entry: GameLabel = expression", gameList.start, gameList.end);
+        } else if (labels.has(match[1])) {
+          report(`Duplicate game default '${match[1]}'`, gameList.start, gameList.end);
+        } else { labels.add(match[1]); }
+      }
+      if (gameList.end !== undefined && code.slice(gameList.end).trim()) {
+        report("Unexpected tokens after game defaults", gameList.end);
+      }
     }
 
     const block = /^(?:if|else(?:\s+if)?|switch|case|default|loop|while|block)\b/.test(text)

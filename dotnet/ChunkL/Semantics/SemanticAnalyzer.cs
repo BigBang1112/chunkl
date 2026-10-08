@@ -9,7 +9,7 @@ namespace ChunkL.Semantics;
 /// </summary>
 public static class SemanticAnalyzer
 {
-    public static SemanticModel Analyze(ChunkLFile file)
+    public static SemanticModel Analyze(ChunkLFile file, string? game = null)
     {
         var diagnostics = new DiagnosticBag();
         var model = new SemanticModel();
@@ -23,12 +23,12 @@ public static class SemanticAnalyzer
         }
         if (file.Constructor != null)
             model.ConstructorAssignments.AddRange(file.Constructor.Body.OfType<ComputedAssignment>());
-        ResolveFields(model.Class, classDeclarations, model.ConstructorAssignments.Select(a => a.TargetName), diagnostics);
+        ResolveFields(model.Class, classDeclarations, model.ConstructorAssignments.Select(a => a.TargetName), diagnostics, game);
         foreach (var archive in file.Archives)
         {
             var scope = new ArchiveScope { Declaration = archive };
             if (archive.Name != null)
-                ResolveFields(scope, Walk(archive.Body).OfType<FieldDeclaration>().ToList(), [], diagnostics);
+                ResolveFields(scope, Walk(archive.Body).OfType<FieldDeclaration>().ToList(), [], diagnostics, game);
             scope.RequiresExternalVersion = VersionFlow(archive.Body, false, archive, file, diagnostics,
                 new HashSet<ArchiveDeclaration> { archive }).NeedsExternal;
             model.Archives.Add(scope);
@@ -45,11 +45,10 @@ public static class SemanticAnalyzer
     }
 
     private static void ResolveFields(FieldScope scope, List<FieldDeclaration> declarations,
-        IEnumerable<string> constructorTargets, DiagnosticBag diagnostics)
+        IEnumerable<string> constructorTargets, DiagnosticBag diagnostics, string? game)
     {
         var targets = new HashSet<string>(constructorTargets, StringComparer.Ordinal);
         var fields = new Dictionary<string, StoredField>(StringComparer.Ordinal);
-        var defaults = new List<StoredField>();
         foreach (var declaration in declarations.Where(d => d.Name != null && !d.IsSpecialKeyword))
         {
             var name = declaration.Name!;
@@ -62,17 +61,32 @@ public static class SemanticAnalyzer
             field.Declarations.Add(declaration);
             if (declaration.DefaultValue != null)
             {
-                if (field.DefaultDeclaration == null)
+                if (field.FallbackDefaultDeclaration == null)
                 {
-                    field.DefaultDeclaration = declaration;
-                    defaults.Add(field);
+                    field.FallbackDefaultDeclaration = declaration;
                 }
-                else if (DefaultSyntax(field.DefaultDeclaration) != DefaultSyntax(declaration))
+                else if (DefaultSyntax(field.FallbackDefaultDeclaration) != DefaultSyntax(declaration))
                     diagnostics.ReportError($"Conflicting inline defaults for shared field '{name}'", declaration.Position.Start);
+            }
+            foreach (var entry in declaration.GameDefaults)
+            {
+                if (field.GameDefaults.TryGetValue(entry.Game, out var previous))
+                {
+                    if (ExpressionSyntax(previous.Default.Value, previous.Default.ValueSource) != ExpressionSyntax(entry.Value, entry.ValueSource))
+                        diagnostics.ReportError($"Conflicting game defaults for shared field '{name}' in '{entry.Game}'", entry.Position.Start);
+                }
+                else field.GameDefaults.Add(entry.Game, new GameDefaultDefinition(declaration, entry));
             }
         }
         foreach (var field in scope.Fields)
         {
+            field.DefaultDeclaration = field.FallbackDefaultDeclaration;
+            field.DefaultValue = field.FallbackDefaultDeclaration?.DefaultValue;
+            if (game != null && field.GameDefaults.TryGetValue(game, out var selected))
+            {
+                field.DefaultDeclaration = selected.Declaration;
+                field.DefaultValue = selected.Default.Value;
+            }
             var types = field.Declarations.Select(d => d.Type).ToList();
             var first = types[0];
             var compatibleModifiers = types.All(t => ModifiersMatch(first, t));
@@ -88,13 +102,19 @@ public static class SemanticAnalyzer
             else
                 field.Type = storedType;
         }
-        scope.InlineDefaults.AddRange(defaults.Where(f => !f.IsDefaultSkipped));
+        scope.InlineDefaults.AddRange(scope.Fields.Where(f => !f.IsDefaultSkipped && f.DefaultValue != null)
+            .OrderBy(f => declarations.IndexOf(f.DefaultDeclaration!)));
     }
 
     private static string DefaultSyntax(FieldDeclaration field)
     {
-        var current = ChunkLParser.WriteExpression(field.DefaultValue!);
-        if (field.DefaultValueSource is string source)
+        return ExpressionSyntax(field.DefaultValue!, field.DefaultValueSource);
+    }
+
+    private static string ExpressionSyntax(Expression value, string? valueSource)
+    {
+        var current = ChunkLParser.WriteExpression(value);
+        if (valueSource is string source)
         {
             var parsed = new Parsing.ExpressionParser(new Lexer(source).Tokenize(), 0).Parse();
             if (TokenSyntax(ChunkLParser.WriteExpression(parsed)) == TokenSyntax(current))
@@ -396,7 +416,7 @@ public static class SemanticAnalyzer
 
     private static IEnumerable<Expression> StatementExpressions(IBodyStatement statement) => statement switch
     {
-        FieldDeclaration { DefaultValue: not null } field => [field.DefaultValue],
+        FieldDeclaration field => field.GameDefaults.Select(d => d.Value).Concat(field.DefaultValue == null ? [] : new[] { field.DefaultValue }),
         ComputedAssignment assignment => [assignment.Expression], IfStatement branch => [branch.Condition, .. branch.ElseIfs.Select(c => c.Condition)],
         SwitchStatement selection => [selection.Expression, .. selection.Cases.Select(c => c.Value)],
         WhileStatement loop => [loop.Condition], LoopStatement loop => [loop.CountExpression],
