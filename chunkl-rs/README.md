@@ -49,6 +49,8 @@ Analysis reports conflicting declarations or defaults, invalid property reads an
 
 The library provides syntax and initialization metadata. Consumers apply type defaults, evaluate expressions and property accessors, create fresh `empty` values, and serialize binary data. External type compatibility, constructors, inherited class members, and caller-supplied archive versions require the consuming tool's context. `declarations_in_source_order()` exposes the order used by the writer and analyzer. `TypeReference::array_counts` preserves each array dimension's optional count; `array_dimensions` and `fixed_array_count` remain available.
 
+Fields support game-specific defaults such as `int Count = 0 [TMSX = 5, TM2020 = 8]`. Use `analyze_for_game(&file, "TMSX")` to select `StoredField::default_value` and order `inline_defaults` by each selected expression's first declaration. `fallback_default_declaration` and `game_defaults` retain the alternatives. `analyze(&file)` selects fallback defaults. `FieldDeclaration::default_for_game(Some("TMSX"))` also selects a single declaration's default, including anonymous and version fields.
+
 ## Build and test
 
 ```sh

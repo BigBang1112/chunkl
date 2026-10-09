@@ -12,7 +12,16 @@ pub struct StoredField<'a> {
     pub ty: &'a TypeReference,
     pub declarations: Vec<&'a FieldDeclaration>,
     pub default_declaration: Option<&'a FieldDeclaration>,
+    pub fallback_default_declaration: Option<&'a FieldDeclaration>,
+    pub game_defaults: HashMap<&'a str, GameDefaultDefinition<'a>>,
+    pub default_value: Option<&'a Expression>,
     pub is_default_skipped: bool,
+}
+
+#[derive(Debug)]
+pub struct GameDefaultDefinition<'a> {
+    pub declaration: &'a FieldDeclaration,
+    pub default: &'a GameDefault,
 }
 
 #[derive(Debug, Default)]
@@ -49,6 +58,15 @@ impl SemanticModel<'_> {
 
 /// Analyze local declarations. External types and caller-supplied archive versions remain the host's responsibility.
 pub fn analyze(file: &ChunkLFile) -> SemanticModel<'_> {
+    analyze_with_game(file, None)
+}
+
+/// Select game-specific defaults and their source-order initialization positions.
+pub fn analyze_for_game<'a>(file: &'a ChunkLFile, game: &str) -> SemanticModel<'a> {
+    analyze_with_game(file, Some(game))
+}
+
+fn analyze_with_game<'a>(file: &'a ChunkLFile, game: Option<&str>) -> SemanticModel<'a> {
     let mut model = SemanticModel::default();
     let mut fields = Vec::new();
     for reference in file.declarations_in_source_order() {
@@ -76,10 +94,15 @@ pub fn analyze(file: &ChunkLFile) -> SemanticModel<'_> {
         .iter()
         .map(|a| a.target_name.as_str())
         .collect();
-    model.class = resolve_fields(fields, &targets, &mut model.diagnostics);
+    model.class = resolve_fields(fields, &targets, &mut model.diagnostics, game);
     for (index, archive) in file.archives.iter().enumerate() {
         let fields = if archive.name.is_some() {
-            resolve_fields(walk(&archive.body), &HashSet::new(), &mut model.diagnostics)
+            resolve_fields(
+                walk(&archive.body),
+                &HashSet::new(),
+                &mut model.diagnostics,
+                game,
+            )
         } else {
             FieldScope::default()
         };
@@ -122,11 +145,11 @@ fn resolve_fields<'a>(
     statements: Vec<&'a BodyStatement>,
     targets: &HashSet<&str>,
     diagnostics: &mut Vec<Diagnostic>,
+    game: Option<&str>,
 ) -> FieldScope<'a> {
     let mut scope = FieldScope::default();
     let mut by_name = HashMap::new();
-    let mut defaults = Vec::new();
-    for statement in statements {
+    for statement in &statements {
         let BodyStatement::Field(declaration) = statement else {
             continue;
         };
@@ -143,6 +166,9 @@ fn resolve_fields<'a>(
                 ty: &declaration.ty,
                 declarations: Vec::new(),
                 default_declaration: None,
+                fallback_default_declaration: None,
+                game_defaults: HashMap::new(),
+                default_value: None,
                 is_default_skipped: targets.contains(name),
             });
             scope.fields.len() - 1
@@ -150,7 +176,7 @@ fn resolve_fields<'a>(
         let field = &mut scope.fields[index];
         field.declarations.push(declaration);
         if declaration.default_value.is_some() {
-            if let Some(previous) = field.default_declaration {
+            if let Some(previous) = field.fallback_default_declaration {
                 if default_syntax(previous) != default_syntax(declaration) {
                     diagnostics.push(Diagnostic::error(
                         format!("Conflicting inline defaults for shared field '{name}'"),
@@ -158,12 +184,44 @@ fn resolve_fields<'a>(
                     ));
                 }
             } else {
-                field.default_declaration = Some(declaration);
-                defaults.push(index);
+                field.fallback_default_declaration = Some(declaration);
+            }
+        }
+        for entry in &declaration.game_defaults {
+            if let Some(previous) = field.game_defaults.get(entry.game.as_str()) {
+                if expression_syntax(
+                    &previous.default.value,
+                    previous.default.value_source.as_deref(),
+                ) != expression_syntax(&entry.value, entry.value_source.as_deref())
+                {
+                    diagnostics.push(Diagnostic::error(
+                        format!(
+                            "Conflicting game defaults for shared field '{name}' in '{}'",
+                            entry.game
+                        ),
+                        declaration.range.start,
+                    ));
+                }
+            } else {
+                field.game_defaults.insert(
+                    &entry.game,
+                    GameDefaultDefinition {
+                        declaration,
+                        default: entry,
+                    },
+                );
             }
         }
     }
     for field in &mut scope.fields {
+        field.default_declaration = field.fallback_default_declaration;
+        field.default_value = field
+            .fallback_default_declaration
+            .and_then(|d| d.default_value.as_ref());
+        if let Some(selected) = game.and_then(|g| field.game_defaults.get(g)) {
+            field.default_declaration = Some(selected.declaration);
+            field.default_value = Some(&selected.default.value);
+        }
         let first = field.declarations[0];
         let types: Vec<_> = field.declarations.iter().map(|d| &d.ty).collect();
         let integer_types = first.ty.cast_target.is_none()
@@ -195,11 +253,18 @@ fn resolve_fields<'a>(
             )),
         }
     }
-    scope.inline_defaults.extend(
-        defaults
-            .into_iter()
-            .filter(|i| !scope.fields[*i].is_default_skipped),
-    );
+    scope.inline_defaults = (0..scope.fields.len())
+        .filter(|i| {
+            !scope.fields[*i].is_default_skipped && scope.fields[*i].default_value.is_some()
+        })
+        .collect();
+    scope.inline_defaults.sort_by_key(|i| {
+        let declaration = scope.fields[*i].default_declaration.unwrap();
+        statements
+            .iter()
+            .position(|s| matches!(s, BodyStatement::Field(d) if std::ptr::eq(d, declaration)))
+            .unwrap()
+    });
     scope
 }
 
@@ -218,8 +283,15 @@ fn syntax(text: &str) -> Vec<(TokenKind, String)> {
 }
 
 fn default_syntax(field: &FieldDeclaration) -> Vec<(TokenKind, String)> {
-    let current = write_expression(field.default_value.as_ref().unwrap());
-    if let Some(source) = &field.default_value_source {
+    expression_syntax(
+        field.default_value.as_ref().unwrap(),
+        field.default_value_source.as_deref(),
+    )
+}
+
+fn expression_syntax(value: &Expression, source: Option<&str>) -> Vec<(TokenKind, String)> {
+    let current = write_expression(value);
+    if let Some(source) = source {
         let (parsed, diagnostics) = crate::parse_expression_checked(source);
         if diagnostics.is_empty() && syntax(&write_expression(&parsed)) == syntax(&current) {
             return syntax(source);
@@ -820,7 +892,11 @@ fn type_kind(ty: &TypeReference) -> &'static str {
 
 fn statement_expressions(statement: &BodyStatement) -> Vec<&Expression> {
     match statement {
-        BodyStatement::Field(f) => f.default_value.iter().collect(),
+        BodyStatement::Field(f) => f
+            .default_value
+            .iter()
+            .chain(f.game_defaults.iter().map(|d| &d.value))
+            .collect(),
         BodyStatement::Assignment(a) => vec![&a.expression],
         BodyStatement::If(b) => std::iter::once(&b.condition)
             .chain(b.else_ifs.iter().map(|c| &c.condition))

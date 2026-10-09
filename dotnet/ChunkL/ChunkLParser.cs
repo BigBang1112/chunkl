@@ -70,5 +70,5 @@ public static class ChunkLParser
     }
 
     /// <summary>Resolve stored members, initialization order, and local semantic diagnostics.</summary>
-    public static Semantics.SemanticModel Analyze(ChunkLFile file) => Semantics.SemanticAnalyzer.Analyze(file);
+    public static Semantics.SemanticModel Analyze(ChunkLFile file, string? game = null) => Semantics.SemanticAnalyzer.Analyze(file, game);
 }

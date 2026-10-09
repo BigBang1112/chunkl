@@ -60,6 +60,8 @@ Analysis reports conflicting declarations or defaults, invalid property reads an
 
 The library provides syntax and initialization metadata. Consumers apply type defaults, evaluate expressions and property accessors, create fresh `empty` values, and serialize binary data. External type compatibility, constructors, inherited class members, and caller-supplied archive versions require the consuming tool's context. `GetDeclarationsInSourceOrder()` exposes the order used by the writer and analyzer. `TypeReference.ArrayCounts` preserves each array dimension's optional count; `ArrayDimensions` and `FixedArrayCount` remain available.
 
+Fields support game-specific defaults such as `int Count = 0 [TMSX = 5, TM2020 = 8]`. Pass a game label to `ChunkLParser.Analyze(file, "TMSX")` to select `StoredField.DefaultValue` and order `InlineDefaults` by each selected expression's first declaration. `FallbackDefaultDeclaration` and `GameDefaults` retain the alternatives. Omitting the game selects fallback defaults. `FieldDeclaration.GetDefaultValue("TMSX")` also selects a single declaration's default, including anonymous and version fields.
+
 ## Build and test
 
 ```sh

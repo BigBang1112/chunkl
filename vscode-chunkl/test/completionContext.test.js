@@ -4,6 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 const { getCompletionContext, getCompletionScope } = require("../out/completionContext");
 const { SNIPPETS } = require("../out/completionData");
+const { findGameDefaults, collectGameLabels } = require("../out/gameDefaults");
 const Module = require("node:module");
 
 const originalLoad = Module._load;
@@ -44,6 +45,22 @@ function completionItemsAt(source, lineText) {
 function completionsAt(source, lineText) {
   return completionItemsAt(source, lineText).map((item) => item.label);
 }
+
+test("game defaults complete labels and expressions independently of fallbacks and tuples", () => {
+  for (const line of ["  int Value [", "  int Value = 0 [T", "  int Value [TMSX = (1, 2, 3), "]) {
+    assert.equal(getCompletionContext(line).kind, "game-label", line);
+  }
+  for (const line of ["  int Value [TMSX = ", "  int Value [TMSX = (First + ", "  int[Count] Values = empty [TMSX = "]) {
+    assert.equal(getCompletionContext(line).kind, "expression", line);
+  }
+  assert.deepEqual(getCompletionContext("  byte<Mode> Value [TMSX = Mode."), { kind: "enum-member", typeName: "Mode" });
+  assert.equal(getCompletionContext('  string Name [TMSX = "hello, ').kind, "none");
+  assert.equal(findGameDefaults("  int[Count * 2] Values"), undefined);
+  assert.equal(findGameDefaults("  int[Width * Height][] Values"), undefined);
+  const source = "Test 0x01000000\n0x001 [TMSX, TM2020.v5]\n  int First [Custom = 2]\n  int Value = 0 [";
+  assert.deepEqual(collectGameLabels(source), ["TMSX", "TM2020", "Custom"]);
+  assert.deepEqual(completionsAt(source, "  int Value = 0 ["), ["TMSX", "TM2020", "Custom"]);
+});
 
 test("offers plain declaration and control keywords alongside separate snippets", () => {
   const root = completionItemsAt("en", "en");

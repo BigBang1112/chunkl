@@ -230,6 +230,18 @@ public sealed class ChunkLWriter
             WriteAttributeList(field.Attributes);
         }
 
+        if (field.GameDefaults.Count > 0)
+        {
+            _sb.Append(" [");
+            for (var i = 0; i < field.GameDefaults.Count; i++)
+            {
+                if (i > 0) _sb.Append(", ");
+                _sb.Append(field.GameDefaults[i].Game);
+                _sb.Append(" = ");
+                WriteExpression(field.GameDefaults[i].Value);
+            }
+            _sb.Append(']');
+        }
         WriteComment(field.TrailingComment);
         WriteNewLine();
     }

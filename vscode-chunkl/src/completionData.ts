@@ -44,6 +44,12 @@ export interface SnippetDef {
 
 export const SNIPPETS: SnippetDef[] = [
   {
+    label: "game default",
+    insertText: "[${1:TMSX} = ${2:5}]$0",
+    detail: "Default value for a game context",
+    scope: "field",
+  },
+  {
     label: "constructor",
     insertText: "constructor\n  ${1:FieldName} = ${2:empty}$0",
     detail: "Initialize class fields or writable properties",

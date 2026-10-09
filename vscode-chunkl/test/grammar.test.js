@@ -27,6 +27,35 @@ function scopesAt(result, line, text) {
   return result.tokens.find((token) => token.startIndex <= index && index < token.endIndex).scopes;
 }
 
+for (const prefix of ["  int Value ", "  int Value = 0 ", "  int Value = 0 (optional, name: Value) ", "  byte<Mode> Value ", "  CNode*?[] Nodes = empty (external) ", "  version = 1 ", "  version = 1 (optional) ", "  int ", "  int (optional) "]) {
+  test(`game defaults highlight after ${prefix.trim()}`, () => {
+    const line = prefix + '[TMSX = (1, 2, 3), TM2020 = "text, [brackets] // #"] // trailing';
+    const result = grammar.tokenizeLine(line);
+    for (const label of ["TMSX", "TM2020"]) {
+      assert.ok(scopesAt(result, line, label).includes("constant.other.version-tag.chunkl"), label);
+    }
+    assert.ok(scopesAt(result, line, "2").includes("constant.numeric.integer.chunkl"));
+    for (const text of ["text,", "[brackets]", "// #"]) {
+      assert.ok(scopesAt(result, line, text).includes("string.quoted.double.chunkl"), text);
+    }
+    assert.ok(scopesAt(result, line, "// trailing").includes("comment.line.double-slash.chunkl"));
+    const next = "  int Next";
+    assert.deepEqual(grammar.tokenizeLine(next, result.ruleStack).tokens, grammar.tokenizeLine(next).tokens);
+  });
+}
+
+test("brackets and comment markers inside fallback strings stay strings", () => {
+  for (const prefix of ["  string Name", "  string<Label> Name"]) {
+    const line = prefix + ' = "fallback [Fake = 5] // #" [TMSX = "game"] // trailing';
+    const result = grammar.tokenizeLine(line);
+    for (const text of ["fallback", "Fake", "// #"]) {
+      assert.ok(scopesAt(result, line, text).includes("string.quoted.double.chunkl"), text);
+    }
+    assert.ok(scopesAt(result, line, "TMSX").includes("constant.other.version-tag.chunkl"));
+    assert.ok(scopesAt(result, line, "// trailing").includes("comment.line.double-slash.chunkl"));
+  }
+});
+
 const attributes = String.raw`(name: "value, with ) and // # and \"quote\"", enabled, raw: plain value)`;
 for (const prefix of ["0x001 ", "archive Key ", "  int Value ", "  byte<Options> Value ", "  v1+ ", "  block "]) {
   test(`quoted attributes preserve highlighting after ${prefix.trim()}`, () => {

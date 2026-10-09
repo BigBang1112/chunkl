@@ -6,6 +6,25 @@ const { getDiagnostics } = require("../out/diagnostics");
 
 const header = "TestClass 0x01000000\n";
 
+test("game defaults follow the entire flag and key-value attribute list", () => {
+  for (const field of ["int Value = 0", "version = 1", "int"]) {
+    assert.deepEqual(getDiagnostics(header + `0x001\n  ${field} (optional, name: Value) [TMSX = 5]\n`), []);
+    assert.ok(getDiagnostics(header + `0x001\n  ${field} [TMSX = 5] (optional, name: Value)\n`)
+      .some(d => d.message === "Unexpected tokens after game defaults"));
+  }
+});
+
+test("game default lists validate entries without splitting tuples or strings", () => {
+  assert.deepEqual(getDiagnostics(header + "0x001\n  int[Width * Height][] Values\n"), []);
+  assert.deepEqual(getDiagnostics(header + '0x001\n  int Value = 0 [TMSX = (1, 2, 3), TM2020 = "a, [b] // #"] // comment\n'), []);
+  for (const list of ["[]", "[TMSX]", "[TMSX =]", "[TMSX = 5,]", "[TM.v1 = 5]", "[TMSX = 5] (flag)", "[TMSX = 5] [TM2020 = 6]"]) {
+    assert.ok(getDiagnostics(header + `0x001\n  int Value ${list}\n`).length > 0, list);
+  }
+  assert.ok(getDiagnostics(header + "0x001\n  int Value [TMSX = 5, TMSX = 6]\n").some(d => d.message.includes("Duplicate game default")));
+  assert.ok(getDiagnostics(header + "constructor\n  Value = 1 [TMSX = 5]\n").some(d => d.message.includes("only allowed on field")));
+  assert.ok(getDiagnostics(header + "0x001\n  return [TMSX = 5]\n").some(d => d.message.includes("only allowed on field")));
+});
+
 test("valid project fixtures have no editor diagnostics", () => {
   const fixtures = path.join(__dirname, "../../dotnet/ChunkL.Tests/Fixtures");
   for (const name of readdirSync(fixtures).filter((entry) => entry.endsWith(".chunkl"))) {

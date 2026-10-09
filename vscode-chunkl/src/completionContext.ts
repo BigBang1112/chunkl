@@ -1,7 +1,9 @@
+import { findGameDefaults } from "./gameDefaults";
+
 export type CompletionScope = "root" | "field" | "attribute";
 
 export type CompletionContext =
-  | { kind: "none" | "root" | "field" | "attribute" | "expression" | "cast" }
+  | { kind: "none" | "root" | "field" | "attribute" | "expression" | "cast" | "game-label" }
   | { kind: "enum-member"; typeName: string };
 
 export function getCompletionContext(textBeforeCursor: string): CompletionContext {
@@ -9,6 +11,13 @@ export function getCompletionContext(textBeforeCursor: string): CompletionContex
     return { kind: "none" };
   }
 
+  const gameList = findGameDefaults(textBeforeCursor);
+  if (gameList && gameList.end === undefined) {
+    const entry = gameList.entries[gameList.entries.length - 1];
+    if (!/(?<![=!<>])=(?!=)/.test(entry)) { return { kind: "game-label" }; }
+    const member = /\b([A-Za-z_]\w*)\.(?:[A-Za-z_]\w*)?$/.exec(entry);
+    return member ? { kind: "enum-member", typeName: member[1] } : { kind: "expression" };
+  }
   const scope = getCompletionScope(textBeforeCursor);
   if (/^property\s+[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*<[\w.]*$/.test(textBeforeCursor)) {
     return { kind: "cast" };

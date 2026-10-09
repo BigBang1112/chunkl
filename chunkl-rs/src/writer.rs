@@ -222,6 +222,18 @@ impl Writer<'_> {
                     self.output.push(' ');
                     self.attributes(attributes);
                 }
+                if !field.game_defaults.is_empty() {
+                    self.output.push_str(" [");
+                    for (i, entry) in field.game_defaults.iter().enumerate() {
+                        if i > 0 {
+                            self.output.push_str(", ");
+                        }
+                        self.output.push_str(&entry.game);
+                        self.output.push_str(" = ");
+                        self.expr(&entry.value);
+                    }
+                    self.output.push(']');
+                }
                 self.comment(field.trailing_comment.as_ref());
                 self.newline();
             }

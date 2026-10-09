@@ -10,9 +10,13 @@ public sealed class StoredField
     public required TypeReference Type { get; set; }
     public List<FieldDeclaration> Declarations { get; } = [];
     public FieldDeclaration? DefaultDeclaration { get; internal set; }
-    public Expression? DefaultValue => DefaultDeclaration?.DefaultValue;
+    public FieldDeclaration? FallbackDefaultDeclaration { get; internal set; }
+    public Dictionary<string, GameDefaultDefinition> GameDefaults { get; } = new(StringComparer.Ordinal);
+    public Expression? DefaultValue { get; internal set; }
     public bool IsDefaultSkipped { get; internal set; }
 }
+
+public sealed record GameDefaultDefinition(FieldDeclaration Declaration, GameDefault Default);
 
 /// <summary>Type defaults apply to Fields, followed by InlineDefaults in the listed order.</summary>
 public class FieldScope

@@ -163,9 +163,25 @@ pub struct FieldDeclaration {
     pub name: Option<String>,
     pub default_value: Option<Expression>,
     pub default_value_source: Option<String>,
+    pub game_defaults: Vec<GameDefault>,
     pub attributes: Option<AttributeList>,
     pub trailing_comment: Option<Comment>,
     pub is_special_keyword: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GameDefault {
+    pub game: String,
+    pub value: Expression,
+    pub value_source: Option<String>,
+}
+
+impl FieldDeclaration {
+    pub fn default_for_game(&self, game: Option<&str>) -> Option<&Expression> {
+        game.and_then(|game| self.game_defaults.iter().find(|d| d.game == game))
+            .map(|d| &d.value)
+            .or(self.default_value.as_ref())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
